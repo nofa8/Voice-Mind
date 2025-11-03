@@ -7,8 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		D8F74F862E8AC7F0001D31C7 /* FirstAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F74F852E8AC7F0001D31C7 /* FirstAppApp.swift */; };
-		D8F74F882E8AC7F0001D31C7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F74F872E8AC7F0001D31C7 /* ContentView.swift */; };
+		D889E4112EB6C0AD00A8E910 /* VoiceNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4102EB6C0AD00A8E910 /* VoiceNote.swift */; };
+		D889E4132EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4122EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift */; };
+		D889E4152EB6C0EB00A8E910 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4142EB6C0EB00A8E910 /* MainView.swift */; };
+		D889E4172EB6C0FE00A8E910 /* RecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4162EB6C0FE00A8E910 /* RecordView.swift */; };
+		D889E4192EB6C10B00A8E910 /* NotesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4182EB6C10B00A8E910 /* NotesListView.swift */; };
+		D889E41B2EB8C8DD00A8E910 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */; };
+		D889E41E2EB8C8DD00A8E910 /* LLM_Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */; };
+		D889E4202EB9063E00A8E910 /* GeminiTranslationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E41F2EB9063E00A8E910 /* GeminiTranslationService.swift */; };
+		D889E4222EB9065B00A8E910 /* GeminiAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4212EB9065B00A8E910 /* GeminiAnalysisService.swift */; };
+		D8F74F862E8AC7F0001D31C7 /* VoiceMindApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F74F852E8AC7F0001D31C7 /* VoiceMindApp.swift */; };
 		D8F74F8A2E8AC7F1001D31C7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D8F74F892E8AC7F1001D31C7 /* Assets.xcassets */; };
 		D8F74F8D2E8AC7F1001D31C7 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D8F74F8C2E8AC7F1001D31C7 /* Preview Assets.xcassets */; };
 		D8F74F972E8AC7F1001D31C7 /* FirstAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F74F962E8AC7F1001D31C7 /* FirstAppTests.swift */; };
@@ -34,9 +42,18 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D889E4102EB6C0AD00A8E910 /* VoiceNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNote.swift; sourceTree = "<group>"; };
+		D889E4122EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderViewModel.swift; sourceTree = "<group>"; };
+		D889E4142EB6C0EB00A8E910 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
+		D889E4162EB6C0FE00A8E910 /* RecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordView.swift; sourceTree = "<group>"; };
+		D889E4182EB6C10B00A8E910 /* NotesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesListView.swift; sourceTree = "<group>"; };
+		D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
+		D889E41C2EB8C8DD00A8E910 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLM_Service.swift; sourceTree = "<group>"; };
+		D889E41F2EB9063E00A8E910 /* GeminiTranslationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiTranslationService.swift; sourceTree = "<group>"; };
+		D889E4212EB9065B00A8E910 /* GeminiAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiAnalysisService.swift; sourceTree = "<group>"; };
 		D8F74F822E8AC7F0001D31C7 /* FirstApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FirstApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D8F74F852E8AC7F0001D31C7 /* FirstAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstAppApp.swift; sourceTree = "<group>"; };
-		D8F74F872E8AC7F0001D31C7 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		D8F74F852E8AC7F0001D31C7 /* VoiceMindApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMindApp.swift; sourceTree = "<group>"; };
 		D8F74F892E8AC7F1001D31C7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D8F74F8C2E8AC7F1001D31C7 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		D8F74F922E8AC7F1001D31C7 /* FirstAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FirstAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -71,6 +88,32 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		D889E40D2EB6BF8D00A8E910 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				D889E4102EB6C0AD00A8E910 /* VoiceNote.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		D889E40E2EB6BF9900A8E910 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				D889E4122EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		D889E40F2EB6BFA000A8E910 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				D889E4142EB6C0EB00A8E910 /* MainView.swift */,
+				D889E4162EB6C0FE00A8E910 /* RecordView.swift */,
+				D889E4182EB6C10B00A8E910 /* NotesListView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
 		D8F74F792E8AC7F0001D31C7 = {
 			isa = PBXGroup;
 			children = (
@@ -94,10 +137,17 @@
 		D8F74F842E8AC7F0001D31C7 /* FirstApp */ = {
 			isa = PBXGroup;
 			children = (
-				D8F74F852E8AC7F0001D31C7 /* FirstAppApp.swift */,
-				D8F74F872E8AC7F0001D31C7 /* ContentView.swift */,
+				D889E41C2EB8C8DD00A8E910 /* Info.plist */,
+				D889E40F2EB6BFA000A8E910 /* Views */,
+				D889E40E2EB6BF9900A8E910 /* ViewModels */,
+				D889E40D2EB6BF8D00A8E910 /* Models */,
+				D8F74F852E8AC7F0001D31C7 /* VoiceMindApp.swift */,
+				D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */,
 				D8F74F892E8AC7F1001D31C7 /* Assets.xcassets */,
 				D8F74F8B2E8AC7F1001D31C7 /* Preview Content */,
+				D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */,
+				D889E41F2EB9063E00A8E910 /* GeminiTranslationService.swift */,
+				D889E4212EB9065B00A8E910 /* GeminiAnalysisService.swift */,
 			);
 			path = FirstApp;
 			sourceTree = "<group>";
@@ -233,6 +283,7 @@
 			files = (
 				D8F74F8D2E8AC7F1001D31C7 /* Preview Assets.xcassets in Resources */,
 				D8F74F8A2E8AC7F1001D31C7 /* Assets.xcassets in Resources */,
+				D889E41B2EB8C8DD00A8E910 /* Secrets.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -257,8 +308,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D8F74F882E8AC7F0001D31C7 /* ContentView.swift in Sources */,
-				D8F74F862E8AC7F0001D31C7 /* FirstAppApp.swift in Sources */,
+				D889E4172EB6C0FE00A8E910 /* RecordView.swift in Sources */,
+				D889E4112EB6C0AD00A8E910 /* VoiceNote.swift in Sources */,
+				D889E4202EB9063E00A8E910 /* GeminiTranslationService.swift in Sources */,
+				D8F74F862E8AC7F0001D31C7 /* VoiceMindApp.swift in Sources */,
+				D889E41E2EB8C8DD00A8E910 /* LLM_Service.swift in Sources */,
+				D889E4152EB6C0EB00A8E910 /* MainView.swift in Sources */,
+				D889E4222EB9065B00A8E910 /* GeminiAnalysisService.swift in Sources */,
+				D889E4132EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift in Sources */,
+				D889E4192EB6C10B00A8E910 /* NotesListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -297,6 +355,7 @@
 /* Begin XCBuildConfiguration section */
 		D8F74FA42E8AC7F1001D31C7 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -360,6 +419,7 @@
 		};
 		D8F74FA52E8AC7F1001D31C7 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -424,6 +484,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"FirstApp/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FirstApp/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Voice mind needs access to your microphone to record audio notes.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Voice Mind needs access to speech recognition to transcribe your voice notes!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -454,6 +515,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"FirstApp/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FirstApp/Info.plist;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Voice mind needs access to your microphone to record audio notes.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Voice Mind needs access to speech recognition to transcribe your voice notes!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

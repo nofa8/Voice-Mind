@@ -8,10 +8,12 @@
 import SwiftUI
 
 @main
-struct FirstAppApp: App {
+struct VoiceMindApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
-        }	
+            MainView()
+        }
     }
 }
+
+// 
