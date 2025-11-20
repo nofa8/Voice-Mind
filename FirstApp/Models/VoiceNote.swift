@@ -1,17 +1,44 @@
-//
-//  VoiceNote.swift
-//  FirstApp
-//
-//  Created by Afonso on 01/11/2025.
-//
-
 import Foundation
+import SwiftData
 
-struct VoiceNote: Identifiable {
-    let id = UUID()
-    var date: Date
-    var transcription: String
+@Model
+final class VoiceNote {
+    @Attribute(.unique) var id: UUID
+    var createdAt: Date
+
+    // Raw user speech
+    var transcript: String
+
+    // Gemini analysis
     var summary: String?
     var sentiment: String?
-    var audioURL: URL?
+    var keywords: [String]?
+    var translation: String?
+
+    // Language metadata
+    var detectedLanguage: String?
+    var targetLanguage: String?
+
+    init(
+        transcript: String,
+        summary: String? = nil,
+        sentiment: String? = nil,
+        keywords: [String]? = nil,
+        translation: String? = nil,
+        detectedLanguage: String? = nil,
+        targetLanguage: String? = nil
+    ) {
+        self.id = UUID()
+        self.createdAt = Date()
+        
+        self.transcript = transcript
+        self.summary = summary
+        self.sentiment = sentiment
+        self.keywords = keywords
+        self.translation = translation
+        self.detectedLanguage = detectedLanguage
+        self.targetLanguage = targetLanguage
+    }
 }
+
+

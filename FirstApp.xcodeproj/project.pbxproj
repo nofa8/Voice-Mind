@@ -3,15 +3,16 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D85CD5732EC7B80D0008E8FC /* VoiceNotesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85CD5722EC7B80D0008E8FC /* VoiceNotesListView.swift */; };
+		D85CD5752EC7B8400008E8FC /* NoteRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85CD5742EC7B8400008E8FC /* NoteRow.swift */; };
+		D85CD5772EC7B8690008E8FC /* VoiceNoteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85CD5762EC7B8690008E8FC /* VoiceNoteDetailView.swift */; };
 		D889E4112EB6C0AD00A8E910 /* VoiceNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4102EB6C0AD00A8E910 /* VoiceNote.swift */; };
 		D889E4132EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4122EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift */; };
 		D889E4152EB6C0EB00A8E910 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4142EB6C0EB00A8E910 /* MainView.swift */; };
-		D889E4172EB6C0FE00A8E910 /* RecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4162EB6C0FE00A8E910 /* RecordView.swift */; };
-		D889E4192EB6C10B00A8E910 /* NotesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4182EB6C10B00A8E910 /* NotesListView.swift */; };
 		D889E41B2EB8C8DD00A8E910 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */; };
 		D889E41E2EB8C8DD00A8E910 /* LLM_Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */; };
 		D889E4202EB9063E00A8E910 /* GeminiTranslationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E41F2EB9063E00A8E910 /* GeminiTranslationService.swift */; };
@@ -42,11 +43,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D85CD5722EC7B80D0008E8FC /* VoiceNotesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNotesListView.swift; sourceTree = "<group>"; };
+		D85CD5742EC7B8400008E8FC /* NoteRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRow.swift; sourceTree = "<group>"; };
+		D85CD5762EC7B8690008E8FC /* VoiceNoteDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNoteDetailView.swift; sourceTree = "<group>"; };
 		D889E4102EB6C0AD00A8E910 /* VoiceNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNote.swift; sourceTree = "<group>"; };
 		D889E4122EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderViewModel.swift; sourceTree = "<group>"; };
 		D889E4142EB6C0EB00A8E910 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
-		D889E4162EB6C0FE00A8E910 /* RecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordView.swift; sourceTree = "<group>"; };
-		D889E4182EB6C10B00A8E910 /* NotesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesListView.swift; sourceTree = "<group>"; };
 		D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		D889E41C2EB8C8DD00A8E910 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLM_Service.swift; sourceTree = "<group>"; };
@@ -107,9 +109,9 @@
 		D889E40F2EB6BFA000A8E910 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				D85CD5722EC7B80D0008E8FC /* VoiceNotesListView.swift */,
+				D85CD5762EC7B8690008E8FC /* VoiceNoteDetailView.swift */,
 				D889E4142EB6C0EB00A8E910 /* MainView.swift */,
-				D889E4162EB6C0FE00A8E910 /* RecordView.swift */,
-				D889E4182EB6C10B00A8E910 /* NotesListView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -148,6 +150,7 @@
 				D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */,
 				D889E41F2EB9063E00A8E910 /* GeminiTranslationService.swift */,
 				D889E4212EB9065B00A8E910 /* GeminiAnalysisService.swift */,
+				D85CD5742EC7B8400008E8FC /* NoteRow.swift */,
 			);
 			path = FirstApp;
 			sourceTree = "<group>";
@@ -257,7 +260,7 @@
 				};
 			};
 			buildConfigurationList = D8F74F7D2E8AC7F0001D31C7 /* Build configuration list for PBXProject "FirstApp" */;
-			compatibilityVersion = "Xcode 14.0";
+			compatibilityVersion = "Xcode 15.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -265,6 +268,8 @@
 				Base,
 			);
 			mainGroup = D8F74F792E8AC7F0001D31C7;
+			packageReferences = (
+			);
 			productRefGroup = D8F74F832E8AC7F0001D31C7 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -308,15 +313,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D889E4172EB6C0FE00A8E910 /* RecordView.swift in Sources */,
 				D889E4112EB6C0AD00A8E910 /* VoiceNote.swift in Sources */,
 				D889E4202EB9063E00A8E910 /* GeminiTranslationService.swift in Sources */,
+				D85CD5732EC7B80D0008E8FC /* VoiceNotesListView.swift in Sources */,
 				D8F74F862E8AC7F0001D31C7 /* VoiceMindApp.swift in Sources */,
 				D889E41E2EB8C8DD00A8E910 /* LLM_Service.swift in Sources */,
 				D889E4152EB6C0EB00A8E910 /* MainView.swift in Sources */,
+				D85CD5752EC7B8400008E8FC /* NoteRow.swift in Sources */,
 				D889E4222EB9065B00A8E910 /* GeminiAnalysisService.swift in Sources */,
 				D889E4132EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift in Sources */,
-				D889E4192EB6C10B00A8E910 /* NotesListView.swift in Sources */,
+				D85CD5772EC7B8690008E8FC /* VoiceNoteDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -406,7 +412,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -464,7 +470,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -476,6 +482,7 @@
 		};
 		D8F74FA72E8AC7F1001D31C7 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -507,6 +514,7 @@
 		};
 		D8F74FA82E8AC7F1001D31C7 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import Speech
+import SwiftData
 
 @MainActor
 class VoiceRecorderViewModel: ObservableObject {
@@ -12,6 +13,13 @@ class VoiceRecorderViewModel: ObservableObject {
     @Published var translation = ""
     @Published var targetLanguage = "English"
     
+        // 🔥 Add this:
+    var modelContext: ModelContext?
+
+    func setContext(_ context: ModelContext) {
+        self.modelContext = context
+    }
+
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
@@ -27,9 +35,41 @@ class VoiceRecorderViewModel: ObservableObject {
         }
     }
     
+    
+    func saveVoiceNote(
+        transcript: String,
+        summary: String?,
+        sentiment: String?,
+        keywords: [String]?,
+        translation: String?,
+        detectedLanguage: String?,
+        targetLanguage: String?,
+        modelContext: ModelContext
+    ) {
+        let note = VoiceNote(
+            transcript: transcript,
+            summary: summary,
+            sentiment: sentiment,
+            keywords: keywords,
+            translation: translation,
+            detectedLanguage: detectedLanguage,
+            targetLanguage: targetLanguage
+        )
+        
+        modelContext.insert(note)
+        
+        do {
+            try modelContext.save()
+        } catch {
+            print("❌ Failed to save note:", error)
+        }
+    }
+
+
+    
     // MARK: - Recording
     func startRecording() {
-        transcription = "Olá tudo bem, como vai tudo por aí na Gronelandia"
+        transcription = "Hello how are you in this beaufiful morning?"
         isRecording = true
         
         let audioSession = AVAudioSession.sharedInstance()
@@ -77,19 +117,56 @@ class VoiceRecorderViewModel: ObservableObject {
         guard !text.isEmpty else { return }
         
         do {
+            // 1. Detect original language
+            let detectedLang = try await detectLanguage(text)
+
+            // 2. Analyze with Gemini
             let analysis = try await GeminiAnalysisService.shared.analyze(text)
             self.summary = analysis.summary
             self.sentiment = analysis.sentiment
             self.keywords = analysis.keywords
-            
-            self.translation = try await GeminiTranslationService.shared.translate(
+
+            // 3. Translate summary
+            let translated = try await GeminiTranslationService.shared.translate(
                 analysis.summary,
                 to: targetLanguage
             )
+            self.translation = translated
+
+            // 4. Save to database
+            guard let ctx = modelContext else {
+                print("❌ ModelContext not set")
+                return
+            }
+
+            saveVoiceNote(
+                transcript: text,
+                summary: summary,
+                sentiment: sentiment,
+                keywords: keywords,
+                translation: translation,
+                detectedLanguage: detectedLang,
+                targetLanguage: targetLanguage,
+                modelContext: ctx
+            )
+
         } catch {
-            print("⚠️ Gemini pipeline failed: \(error)")
+            print("⚠️ Gemini failure:", error)
             self.summary = "Error during analysis"
             self.translation = "Translation failed"
         }
     }
+
+    
+    func detectLanguage(_ text: String) async throws -> String {
+        let system = "Detect the language of this text. Reply with only the language name (e.g., English, Portuguese)."
+
+        let result = try await GeminiService.shared.sendPrompt(
+            "Text:\n\(text)",
+            systemInstruction: system
+        )
+
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
 }

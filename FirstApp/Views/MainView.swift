@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MainView: View {
+    @Environment(\.modelContext) private var context
     @StateObject private var recorder = VoiceRecorderViewModel()
     
     let languages = ["English", "Portuguese", "Spanish", "French", "German", "Italian"]
@@ -61,5 +62,9 @@ struct MainView: View {
                 await recorder.requestPermissions()
             }
         }
+        .onAppear {
+            recorder.setContext(context)
+        }
+        
     }
 }

@@ -6,13 +6,15 @@
 //
 
 import SwiftUI
-
+import SwiftData
 @main
 struct VoiceMindApp: App {
     var body: some Scene {
         WindowGroup {
-            MainView()
+            VoiceNotesListView()
+            //MainView()
         }
+            .modelContainer(for: VoiceNote.self)
     }
 }
 

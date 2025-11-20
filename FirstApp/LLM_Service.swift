@@ -7,7 +7,6 @@
 // GeminiClient.swift
 
 import Foundation
-
 // Define a richer error type
 enum GeminiError: Error {
     case decoding(Error)
@@ -57,52 +56,46 @@ final class GeminiService {
         let urlString = "\(baseURL)/\(model):generateContent"
         guard let url = URL(string: urlString) else { throw GeminiError.badURL }
         
-        var generationConfig: [String: Any] = [
-            "temperature": 0.2
-        ]
-        
-        // ⭐️ CORRECT SYSTEM INSTRUCTION PLACEMENT
-        if let instruction = systemInstruction {
-            generationConfig["systemInstruction"] = instruction
-        }
-        
-        // ⭐️ CORRECT STRUCTURED OUTPUT CONFIG
-        if let mimeType = responseMimeType {
-            generationConfig["responseMimeType"] = mimeType
-        }
-        
         let requestBody: [String: Any] = [
+            "systemInstruction": systemInstruction != nil
+                ? ["parts": [["text": systemInstruction!]]]
+                : nil,
             "contents": [
                 [
                     "role": "user",
                     "parts": [["text": prompt]]
                 ]
             ],
-            "config": generationConfig
-        ]
+            "generationConfig": [
+                "temperature": 0.2,
+                "responseMimeType": responseMimeType
+            ].compactMapValues { $0 }
+        ].compactMapValues { $0 }
         
         let data = try JSONSerialization.data(withJSONObject: requestBody)
+        
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
-        req.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        // ⭐️ CORRECT API KEY PLACEMENT (Header)
-        req.addValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
-        
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
         req.httpBody = data
         
-        let (responseData, _) = try await URLSession.shared.data(for: req)
+        
+        let (responseData, response) = try await URLSession.shared.data(for: req)
+
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+            throw GeminiError.api("HTTP \(httpResponse.statusCode)")
+        }
         
         do {
             let decoded = try JSONDecoder().decode(GeminiResponse.self, from: responseData)
             guard let result = decoded.candidates.first?.content.parts.first?.text else {
-                throw GeminiError.badResponse // Could be blocked, safety filtered, or empty
+                throw GeminiError.badResponse
             }
             return result
         } catch let decodingError {
-            // Provide better context if decoding fails
-            print("Failed to decode Gemini response. Raw Data: \(String(data: responseData, encoding: .utf8) ?? "N/A")")
             throw GeminiError.decoding(decodingError)
         }
     }
+
 }
