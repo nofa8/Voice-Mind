@@ -3,7 +3,7 @@ import SwiftUI
 struct Theme {
     static let background = Color(hex: "F2F2F7")
     static let cardBackground = Color.white
-    static let primary = Color("AccentColor") // use Asset if present
+    static let primary = Color.blue
     static let secondary = Color.gray
     static let accent = Color.indigo
     static let textPrimary = Color.primary
