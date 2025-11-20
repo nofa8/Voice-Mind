@@ -1,34 +1,33 @@
+// VoiceNotesListView.swift
 import SwiftUI
 import SwiftData
 
 struct VoiceNotesListView: View {
     @Environment(\.modelContext) private var context
-
-    @Query(sort: \VoiceNote.createdAt, order: .reverse)
-    private var notes: [VoiceNote]
-
+    @Query(sort: \VoiceNote.createdAt, order: .reverse) private var notes: [VoiceNote]
+    
+    // State to control the presentation of the recording view
     @State private var isShowingRecorder = false
 
     var body: some View {
         NavigationStack {
             ZStack {
-                Theme.background.ignoresSafeArea()
-
+                Theme.background.ignoresSafeArea() // Apply global background
+                
                 if notes.isEmpty {
                     ContentUnavailableView(
                         "No Voice Notes",
                         systemImage: "mic.slash",
                         description: Text("Tap the + button to record your first thought.")
                     )
-                    .padding()
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(notes) { note in
                                 NavigationLink(value: note) {
                                     NoteRow(note: note)
-                                        .buttonStyle(PlainButtonStyle())
                                 }
+                                .buttonStyle(PlainButtonStyle()) // Removes default blue link color
                             }
                         }
                         .padding()
@@ -48,11 +47,9 @@ struct VoiceNotesListView: View {
             .navigationDestination(for: VoiceNote.self) { note in
                 VoiceNoteDetailView(note: note)
             }
+            // Present MainView as a sheet
             .sheet(isPresented: $isShowingRecorder) {
-                NavigationStack {
-                    MainView()
-                        .toolbarRole(.automatic)
-                }
+                MainView()
             }
         }
     }
