@@ -12,6 +12,7 @@ class VoiceRecorderViewModel: ObservableObject {
     @Published var keywords: [String] = []
     @Published var translation = ""
     @Published var targetLanguage = "English"
+    @Published var scheduledDate = Date()
     
         // 🔥 Add this:
     var modelContext: ModelContext?
@@ -44,6 +45,7 @@ class VoiceRecorderViewModel: ObservableObject {
         translation: String?,
         detectedLanguage: String?,
         targetLanguage: String?,
+        createdAt: Date? = nil,
         modelContext: ModelContext
     ) {
         let note = VoiceNote(
@@ -53,11 +55,12 @@ class VoiceRecorderViewModel: ObservableObject {
             keywords: keywords,
             translation: translation,
             detectedLanguage: detectedLanguage,
-            targetLanguage: targetLanguage
+            targetLanguage: targetLanguage,
+            createdAt: createdAt
         )
-        
+
         modelContext.insert(note)
-        
+
         do {
             try modelContext.save()
         } catch {
@@ -147,6 +150,7 @@ class VoiceRecorderViewModel: ObservableObject {
                 translation: translation,
                 detectedLanguage: detectedLang,
                 targetLanguage: targetLanguage,
+                createdAt: self.scheduledDate,
                 modelContext: ctx
             )
 

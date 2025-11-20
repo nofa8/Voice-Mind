@@ -7,19 +7,52 @@ struct VoiceNotesListView: View {
     @Query(sort: \VoiceNote.createdAt, order: .reverse)
     private var notes: [VoiceNote]
 
+    @State private var isShowingRecorder = false
+
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(notes) { note in
-                    NavigationLink(value: note) {
-                        NoteRow(note: note)
+            ZStack {
+                Theme.background.ignoresSafeArea()
+
+                if notes.isEmpty {
+                    ContentUnavailableView(
+                        "No Voice Notes",
+                        systemImage: "mic.slash",
+                        description: Text("Tap the + button to record your first thought.")
+                    )
+                    .padding()
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(notes) { note in
+                                NavigationLink(value: note) {
+                                    NoteRow(note: note)
+                                        .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                        }
+                        .padding()
                     }
                 }
-                .onDelete(perform: deleteNotes)
             }
-            .navigationTitle("Voice Notes")
+            .navigationTitle("VoiceMind")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { isShowingRecorder = true }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(Theme.primary)
+                    }
+                }
+            }
             .navigationDestination(for: VoiceNote.self) { note in
                 VoiceNoteDetailView(note: note)
+            }
+            .sheet(isPresented: $isShowingRecorder) {
+                NavigationStack {
+                    MainView()
+                        .toolbarRole(.automatic)
+                }
             }
         }
     }

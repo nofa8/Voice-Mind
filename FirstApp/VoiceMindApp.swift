@@ -7,14 +7,35 @@
 
 import SwiftUI
 import SwiftData
+
 @main
 struct VoiceMindApp: App {
     var body: some Scene {
         WindowGroup {
-            VoiceNotesListView()
-            //MainView()
+            TabView {
+                NavigationStack {
+                    MainView()
+                }
+                .tabItem {
+                    Label("Record", systemImage: "mic.fill")
+                }
+
+                NavigationStack {
+                    VoiceNotesListView()
+                }
+                .tabItem {
+                    Label("Notes", systemImage: "note.text")
+                }
+
+                NavigationStack {
+                    AgendaView()
+                }
+                .tabItem {
+                    Label("Agenda", systemImage: "calendar")
+                }
+            }
         }
-            .modelContainer(for: VoiceNote.self)
+        .modelContainer(for: VoiceNote.self)
     }
 }
 

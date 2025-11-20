@@ -26,10 +26,11 @@ final class VoiceNote {
         keywords: [String]? = nil,
         translation: String? = nil,
         detectedLanguage: String? = nil,
-        targetLanguage: String? = nil
+        targetLanguage: String? = nil,
+        createdAt: Date? = nil
     ) {
         self.id = UUID()
-        self.createdAt = Date()
+        self.createdAt = createdAt ?? Date()
         
         self.transcript = transcript
         self.summary = summary
