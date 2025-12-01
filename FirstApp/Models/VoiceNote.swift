@@ -5,6 +5,10 @@ import SwiftData
 final class VoiceNote {
     @Attribute(.unique) var id: UUID
     var createdAt: Date
+    
+    // New fields
+    var type: NoteType
+    var eventDate: Date
 
     // Raw user speech
     var transcript: String
@@ -21,6 +25,8 @@ final class VoiceNote {
 
     init(
         transcript: String,
+        type: NoteType = .agenda,
+        eventDate: Date = Date(),
         summary: String? = nil,
         sentiment: String? = nil,
         keywords: [String]? = nil,
@@ -31,6 +37,8 @@ final class VoiceNote {
     ) {
         self.id = UUID()
         self.createdAt = createdAt ?? Date()
+        self.type = type
+        self.eventDate = eventDate
         
         self.transcript = transcript
         self.summary = summary
@@ -40,6 +48,11 @@ final class VoiceNote {
         self.detectedLanguage = detectedLanguage
         self.targetLanguage = targetLanguage
     }
+}
+
+enum NoteType: String, Codable, CaseIterable {
+    case agenda = "Agenda"
+    case todo = "ToDo"
 }
 
 

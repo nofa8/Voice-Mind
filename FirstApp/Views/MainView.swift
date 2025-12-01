@@ -45,19 +45,49 @@ struct MainView: View {
                     .shadow(color: .black.opacity(0.05), radius: 5)
                     .padding(.horizontal)
                     
-                    // 3. Language Picker
-                    HStack {
-                        Text("Translate Summary:")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Picker("", selection: $recorder.targetLanguage) {
-                            ForEach(languages, id: \.self) { lang in
-                                Text(lang)
+                    // 3. Note Details (Type & Date)
+                    VStack(spacing: 15) {
+                        HStack {
+                            Text("Type:")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Picker("Type", selection: $recorder.selectedType) {
+                                ForEach(NoteType.allCases, id: \.self) { type in
+                                    Text(type.rawValue).tag(type)
+                                }
                             }
+                            .pickerStyle(.segmented)
+                            .frame(width: 150)
                         }
-                        .pickerStyle(.menu)
-                        .tint(Theme.primary)
+                        
+                        Divider()
+                        
+                        HStack {
+                            Text(recorder.selectedType == .agenda ? "Event Date:" : "Due Date:")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            DatePicker("", selection: $recorder.selectedDate, displayedComponents: [.date, .hourAndMinute])
+                                .labelsHidden()
+                        }
+                        
+                        Divider()
+                        
+                        // Language Picker
+                        HStack {
+                            Text("Translate Summary:")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Picker("", selection: $recorder.targetLanguage) {
+                                ForEach(languages, id: \.self) { lang in
+                                    Text(lang)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .tint(Theme.primary)
+                        }
                     }
                     .padding()
                     .background(Theme.cardBackground)
@@ -70,8 +100,6 @@ struct MainView: View {
                     Button {
                         if recorder.isRecording {
                             recorder.stopRecording()
-                            // Optional: Add a small delay or wait for processing before dismissing
-                            // For now, we let the user close manually or you can trigger dismiss inside ViewModel events
                         } else {
                             recorder.startRecording()
                         }

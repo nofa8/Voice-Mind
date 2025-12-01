@@ -7,16 +7,19 @@ struct NoteRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Image(systemName: "waveform")
-                    .foregroundStyle(Theme.accent)
-                Text(note.createdAt.formatted(date: .abbreviated, time: .shortened))
+                Image(systemName: note.type == .agenda ? "calendar" : "checklist")
+                    .foregroundStyle(note.type == .agenda ? .blue : .orange)
+                
+                Text(note.type.rawValue)
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundStyle(note.type == .agenda ? .blue : .orange)
+
+                Spacer()
+                
+                Text(note.eventDate.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
-                    .textCase(.uppercase)
-                Spacer()
-                if let sentiment = note.sentiment {
-                    sentimentBadge(sentiment)
-                }
             }
             
             Text(note.summary ?? note.transcript)
