@@ -4,37 +4,70 @@ import SwiftData
 struct AgendaView: View {
     @Environment(\.modelContext) private var context
 
-    @Query(sort: \VoiceNote.createdAt, order: .reverse)
+    @Query(sort: \VoiceNote.eventDate, order: .reverse)
     private var notes: [VoiceNote]
+    
+    @State private var timeFrame: TimeFrame = .day
+
+    enum TimeFrame: String, CaseIterable {
+        case day = "Day"
+        case week = "Week"
+        case month = "Month"
+    }
 
     var body: some View {
-        List {
-            ForEach(groupedByDay(), id: \.key) { section in
-                Section(header: Text(section.key)) {
-                    ForEach(section.value) { note in
-                        NavigationLink(value: note) {
-                            NoteRow(note: note)
+        VStack {
+            Picker("Time Frame", selection: $timeFrame) {
+                ForEach(TimeFrame.allCases, id: \.self) { frame in
+                    Text(frame.rawValue).tag(frame)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding()
+
+            List {
+                ForEach(groupedNotes(), id: \.key) { section in
+                    Section(header: Text(section.key)) {
+                        ForEach(section.value) { note in
+                            NavigationLink(value: note) {
+                                NoteRow(note: note)
+                            }
                         }
-                    }
-                    .onDelete { offsets in
-                        deleteNotes(offsets: offsets, in: section.value)
+                        .onDelete { offsets in
+                            deleteNotes(offsets: offsets, in: section.value)
+                        }
                     }
                 }
             }
         }
-        .navigationTitle("Agenda")
+        .navigationTitle("History")
         .navigationDestination(for: VoiceNote.self) { note in
             VoiceNoteDetailView(note: note)
         }
     }
 
-    private func groupedByDay() -> [(key: String, value: [VoiceNote])] {
+    private func groupedNotes() -> [(key: String, value: [VoiceNote])] {
         let calendar = Calendar.current
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium
 
-        let grouped = Dictionary(grouping: notes) { (note: VoiceNote) -> Date in
-            calendar.startOfDay(for: note.createdAt)
+        let grouped: [Date: [VoiceNote]]
+        
+        switch timeFrame {
+        case .day:
+            formatter.dateStyle = .medium
+            grouped = Dictionary(grouping: notes) { note in
+                calendar.startOfDay(for: note.eventDate)
+            }
+        case .week:
+            formatter.dateFormat = "'Week of' MMM d"
+            grouped = Dictionary(grouping: notes) { note in
+                calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: note.eventDate).date!
+            }
+        case .month:
+            formatter.dateFormat = "MMMM yyyy"
+            grouped = Dictionary(grouping: notes) { note in
+                calendar.dateComponents([.year, .month], from: note.eventDate).date!
+            }
         }
 
         return grouped
@@ -44,7 +77,6 @@ struct AgendaView: View {
     }
 
     private func deleteNotes(offsets: IndexSet, in notesInSection: [VoiceNote]) {
-        // offsets refer to positions inside the section's array
         for index in offsets {
             let note = notesInSection[index]
             context.delete(note)

@@ -13,6 +13,8 @@ class VoiceRecorderViewModel: ObservableObject {
     @Published var translation = ""
     @Published var targetLanguage = "English"
     @Published var scheduledDate = Date()
+    @Published var selectedType: NoteType = .agenda
+    @Published var selectedDate: Date = Date()
     
         // 🔥 Add this:
     var modelContext: ModelContext?
@@ -39,6 +41,8 @@ class VoiceRecorderViewModel: ObservableObject {
     
     func saveVoiceNote(
         transcript: String,
+        type: NoteType,
+        eventDate: Date,
         summary: String?,
         sentiment: String?,
         keywords: [String]?,
@@ -50,6 +54,8 @@ class VoiceRecorderViewModel: ObservableObject {
     ) {
         let note = VoiceNote(
             transcript: transcript,
+            type: type,
+            eventDate: eventDate,
             summary: summary,
             sentiment: sentiment,
             keywords: keywords,
@@ -144,13 +150,15 @@ class VoiceRecorderViewModel: ObservableObject {
 
             saveVoiceNote(
                 transcript: text,
+                type: selectedType,
+                eventDate: selectedDate,
                 summary: summary,
                 sentiment: sentiment,
                 keywords: keywords,
                 translation: translation,
                 detectedLanguage: detectedLang,
                 targetLanguage: targetLanguage,
-                createdAt: self.scheduledDate,
+                createdAt: Date(),
                 modelContext: ctx
             )
 
