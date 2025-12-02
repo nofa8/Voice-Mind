@@ -7,17 +7,20 @@ struct NoteRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Image(systemName: note.type == .agenda ? "calendar" : "checklist")
-                    .foregroundStyle(note.type == .agenda ? .blue : .orange)
+                // 1. Fixed: Use 'note.noteType' instead of 'note.type'
+                Image(systemName: note.noteType == .agenda ? "calendar" : "doc.text")
+                    .foregroundStyle(note.noteType == .agenda ? .blue : .orange)
                 
-                Text(note.type.rawValue)
+                // 1. Fixed: Use 'note.noteType'
+                Text(note.noteType.rawValue.capitalized)
                     .font(.caption)
                     .fontWeight(.bold)
-                    .foregroundStyle(note.type == .agenda ? .blue : .orange)
+                    .foregroundStyle(note.noteType == .agenda ? .blue : .orange)
 
                 Spacer()
                 
-                Text(note.eventDate.formatted(date: .abbreviated, time: .shortened))
+                // 2. Fixed: Handle optional Date. Use eventDate if available, else createdAt
+                Text((note.eventDate ?? note.createdAt).formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -27,6 +30,14 @@ struct NoteRow: View {
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
+            
+            // Optional: Display Priority if you want (since we added it to the model)
+            if let priority = note.priority, !priority.isEmpty {
+                Text(priority.uppercased())
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(priority == "High" ? .red : .gray)
+            }
             
             if let keywords = note.keywords, !keywords.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -49,19 +60,5 @@ struct NoteRow: View {
         .background(Theme.cardBackground)
         .cornerRadius(Theme.cornerRadius)
         .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
-    }
-    
-    private func sentimentBadge(_ sentiment: String) -> some View {
-        let color: Color = sentiment.lowercased().contains("positive") ? .green : 
-                           sentiment.lowercased().contains("negative") ? .red : .orange
-        
-        return Text(sentiment)
-            .font(.caption2)
-            .fontWeight(.bold)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.1))
-            .foregroundColor(color)
-            .cornerRadius(4)
     }
 }
