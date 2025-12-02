@@ -5,14 +5,16 @@
 //  Created by Afonso on 03/11/2025.
 //
 
-// GeminiAnalysisService.swift
-
 import Foundation
 
+// 1. Updated struct to match the new VoiceNote model fields
 struct LLMAnalysis: Codable {
     let summary: String
     let sentiment: String
     let keywords: [String]
+    let actionItems: [String]
+    let category: String
+    let priority: String
 }
 
 final class GeminiAnalysisService {
@@ -20,28 +22,36 @@ final class GeminiAnalysisService {
     private init() {}
     
     func analyze(_ text: String) async throws -> LLMAnalysis {
-        // We include the schema in the prompt as a fallback,
-        // but rely on responseMimeType for strict enforcement.
+        // 2. Updated System Instruction with new JSON Schema
         let systemInstruction = """
-        You are an AI assistant that analyzes text and returns structured JSON.
-        Output must strictly follow this JSON schema. Do not include any surrounding markdown, backticks, or commentary.
+        You are an intelligent personal assistant. Analyze the text and return structured JSON.
+        Output must strictly follow this JSON schema. Do not include any surrounding markdown or backticks.
+        
         {
-          "summary": "short 2-sentence summary",
+          "summary": "Concise 1-sentence summary",
           "sentiment": "Positive | Negative | Neutral",
-          "keywords": ["keyword1", "keyword2", "keyword3"]
+          "keywords": ["tag1", "tag2", "tag3"],
+          "actionItems": ["Task 1", "Task 2"],
+          "category": "Work | Personal | Health | Finance | Idea | Other",
+          "priority": "High | Medium | Low"
         }
+        
+        Rules:
+        - If there are no clear action items, return an empty array for "actionItems".
+        - Choose the single best fit for "category".
+        - Determine "priority" based on urgency and emotional tone.
         """
         
         let prompt = "Analyze the following text and respond ONLY with the JSON object:\n\(text)"
         
-        // ⭐️ USE responseMimeType: "application/json" for guaranteed JSON output
+        // Use responseMimeType: "application/json" for guaranteed JSON output
         let rawResponse = try await GeminiService.shared.sendPrompt(
             prompt,
             systemInstruction: systemInstruction,
             responseMimeType: "application/json"
         )
         
-        // Try to decode, handling potential surrounding backticks if the model ignores the instruction
+        // Clean response just in case (though responseMimeType usually prevents this)
         let cleanedResponse = rawResponse.trimmingCharacters(in: .whitespacesAndNewlines)
                                          .replacingOccurrences(of: "```json", with: "")
                                          .replacingOccurrences(of: "```", with: "")

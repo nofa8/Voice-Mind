@@ -8,14 +8,14 @@ struct NoteRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 // 1. Fixed: Use 'note.noteType' instead of 'note.type'
-                Image(systemName: note.noteType == .agenda ? "calendar" : "doc.text")
-                    .foregroundStyle(note.noteType == .agenda ? .blue : .orange)
+                Image(systemName: note.noteType == NoteType.agenda ? "calendar" : "doc.text")
+                    .foregroundStyle(note.noteType == NoteType.agenda ? .blue : .orange)
                 
                 // 1. Fixed: Use 'note.noteType'
                 Text(note.noteType.rawValue.capitalized)
                     .font(.caption)
                     .fontWeight(.bold)
-                    .foregroundStyle(note.noteType == .agenda ? .blue : .orange)
+                    .foregroundStyle(note.noteType == NoteType.agenda ? .blue : .orange)
 
                 Spacer()
                 
