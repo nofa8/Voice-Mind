@@ -6,23 +6,25 @@ final class VoiceNote {
     @Attribute(.unique) var id: UUID
     var createdAt: Date
     
-    // New fields
-    var type: NoteType
-    var eventDate: Date
-
     // Raw user speech
     var transcript: String
-
-    // Gemini analysis
+    
+    // AI Analysis
     var summary: String?
     var sentiment: String?
     var keywords: [String]?
-    var translation: String?
-
-    // Language metadata
-    var detectedLanguage: String?
-    var targetLanguage: String?
-
+    
+    var actionItems: [String]? // Extracted tasks
+    var category: String?      // e.g., "Work", "Personal", "Ideas"
+    var priority: String?      // "High", "Medium", "Low"
+    
+    var eventDate: Date?       // When the event happens
+    var isCompleted: Bool      // Checkbox for agenda items
+    var noteType: NoteType     // Note vs Agenda
+    
+    // Metadata
+    var detectedLanguage: String? 
+    
     init(
         transcript: String,
         type: NoteType = .agenda,
@@ -30,10 +32,13 @@ final class VoiceNote {
         summary: String? = nil,
         sentiment: String? = nil,
         keywords: [String]? = nil,
-        translation: String? = nil,
+        actionItems: [String]? = nil,
+        category: String? = nil,
+        priority: String? = nil,
+        eventDate: Date? = nil,
         detectedLanguage: String? = nil,
-        targetLanguage: String? = nil,
-        createdAt: Date? = nil
+        createdAt: Date? = nil,
+        noteType: NoteType? = nil
     ) {
         self.id = UUID()
         self.createdAt = createdAt ?? Date()
@@ -44,15 +49,20 @@ final class VoiceNote {
         self.summary = summary
         self.sentiment = sentiment
         self.keywords = keywords
-        self.translation = translation
+        
+        self.actionItems = actionItems
+        self.category = category
+        self.priority = priority
+        
+        self.eventDate = eventDate
+        self.isCompleted = false
         self.detectedLanguage = detectedLanguage
-        self.targetLanguage = targetLanguage
+        self.noteType = noteType ?? .note
     }
 }
 
-enum NoteType: String, Codable, CaseIterable {
-    case agenda = "Agenda"
-    case todo = "ToDo"
+// Simplified Enum
+enum NoteType: String, CaseIterable, Codable {
+    case agenda // Has a specific date/deadline
+    case note   // General thought/journal
 }
-
-

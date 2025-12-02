@@ -1,3 +1,4 @@
+// VoiceRecorderViewModel.swift
 import Foundation
 import AVFoundation
 import Speech
@@ -7,16 +8,17 @@ import SwiftData
 class VoiceRecorderViewModel: ObservableObject {
     @Published var isRecording = false
     @Published var transcription = ""
+    
+    // Analysis Results
     @Published var summary = ""
     @Published var sentiment = ""
     @Published var keywords: [String] = []
-    @Published var translation = ""
-    @Published var targetLanguage = "English"
-    @Published var scheduledDate = Date()
-    @Published var selectedType: NoteType = .agenda
-    @Published var selectedDate: Date = Date()
     
-        // 🔥 Add this:
+    // 🔥 NEW: Actionable Insights
+    @Published var actionItems: [String] = []
+    @Published var category = ""
+    @Published var priority = ""
+    
     var modelContext: ModelContext?
 
     func setContext(_ context: ModelContext) {
@@ -38,35 +40,32 @@ class VoiceRecorderViewModel: ObservableObject {
         }
     }
     
-    
+    // MARK: - Database Saving
     func saveVoiceNote(
         transcript: String,
-        type: NoteType,
-        eventDate: Date,
-        summary: String?,
-        sentiment: String?,
-        keywords: [String]?,
-        translation: String?,
+        analysis: LLMAnalysis,
         detectedLanguage: String?,
-        targetLanguage: String?,
-        createdAt: Date? = nil,
+        noteType: NoteType,
+        eventDate: Date,
         modelContext: ModelContext
     ) {
         let note = VoiceNote(
             transcript: transcript,
-            type: type,
-            eventDate: eventDate,
-            summary: summary,
-            sentiment: sentiment,
-            keywords: keywords,
-            translation: translation,
+            summary: analysis.summary,
+            sentiment: analysis.sentiment,
+            keywords: analysis.keywords,
+            // 🚀 Map new AI fields
+            actionItems: analysis.actionItems,
+            category: analysis.category,
+            priority: analysis.priority,
+            // 🗓 Map UI fields
+            eventDate: eventDate, 
             detectedLanguage: detectedLanguage,
-            targetLanguage: targetLanguage,
-            createdAt: createdAt
+            noteType: noteType
         )
-
+        
         modelContext.insert(note)
-
+        
         do {
             try modelContext.save()
         } catch {
@@ -74,11 +73,16 @@ class VoiceRecorderViewModel: ObservableObject {
         }
     }
 
-
-    
     // MARK: - Recording
     func startRecording() {
-        transcription = "Hello how are you in this beaufiful morning?"
+        // Reset state
+        transcription = ""
+        summary = ""
+        keywords = []
+        actionItems = []
+        category = ""
+        priority = ""
+        
         isRecording = true
         
         let audioSession = AVAudioSession.sharedInstance()
@@ -95,7 +99,9 @@ class VoiceRecorderViewModel: ObservableObject {
                 self.transcription = result.bestTranscription.formattedString
             }
             if error != nil || result?.isFinal == true {
-                self.stopRecording()
+                // If the system stops it (e.g. silence), we default to basic Note/Now. 
+                // However, usually the user presses the button.
+                self.stopRecording(noteType: .note, eventDate: Date())
             }
         }
         
@@ -108,7 +114,8 @@ class VoiceRecorderViewModel: ObservableObject {
         try? audioEngine.start()
     }
     
-    func stopRecording() {
+    // 🔥 UPDATED: Accepts UI parameters
+    func stopRecording(noteType: NoteType, eventDate: Date) {
         isRecording = false
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
@@ -116,69 +123,54 @@ class VoiceRecorderViewModel: ObservableObject {
         recognitionTask?.cancel()
         
         Task {
-            await analyzeAndTranslate()
+            await analyze(noteType: noteType, eventDate: eventDate)
         }
     }
     
-    // MARK: - Analysis + Translation
-    func analyzeAndTranslate() async {
+    // MARK: - Analysis
+    func analyze(noteType: NoteType, eventDate: Date) async {
         let text = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         
         do {
-            // 1. Detect original language
+            // 1. Detect language
             let detectedLang = try await detectLanguage(text)
 
-            // 2. Analyze with Gemini
+            // 2. Analyze with Gemini (Returns Action Items, Category, etc.)
             let analysis = try await GeminiAnalysisService.shared.analyze(text)
+            
+            // 3. Update UI State
             self.summary = analysis.summary
             self.sentiment = analysis.sentiment
             self.keywords = analysis.keywords
+            self.actionItems = analysis.actionItems
+            self.category = analysis.category
+            self.priority = analysis.priority
 
-            // 3. Translate summary
-            let translated = try await GeminiTranslationService.shared.translate(
-                analysis.summary,
-                to: targetLanguage
-            )
-            self.translation = translated
-
-            // 4. Save to database
-            guard let ctx = modelContext else {
-                print("❌ ModelContext not set")
-                return
-            }
+            // 4. Save
+            guard let ctx = modelContext else { return }
 
             saveVoiceNote(
                 transcript: text,
-                type: selectedType,
-                eventDate: selectedDate,
-                summary: summary,
-                sentiment: sentiment,
-                keywords: keywords,
-                translation: translation,
+                analysis: analysis,
                 detectedLanguage: detectedLang,
-                targetLanguage: targetLanguage,
-                createdAt: Date(),
+                noteType: noteType,
+                eventDate: eventDate,
                 modelContext: ctx
             )
 
         } catch {
             print("⚠️ Gemini failure:", error)
             self.summary = "Error during analysis"
-            self.translation = "Translation failed"
         }
     }
 
-    
     func detectLanguage(_ text: String) async throws -> String {
         let system = "Detect the language of this text. Reply with only the language name (e.g., English, Portuguese)."
-
         let result = try await GeminiService.shared.sendPrompt(
             "Text:\n\(text)",
             systemInstruction: system
         )
-
         return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-
 }
