@@ -49,7 +49,7 @@ struct VoiceNotesListView: View {
             }
             // Present MainView as a sheet
             .sheet(isPresented: $isShowingRecorder) {
-                MainView()
+                MainView().modelContext(context)
             }
         }
     }
