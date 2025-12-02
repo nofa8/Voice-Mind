@@ -8,13 +8,12 @@ struct VoiceNoteDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
 
-                section("Type", text: note.type.rawValue)
-                section("Event Date", text: note.eventDate.formatted(date: .long, time: .shortened))
+                section("Type", text: note.noteType.rawValue)
+                section("Event Date", text: note.eventDate?.formatted(date: .long, time: .shortened))
                 section("Transcript", text: note.transcript)
                 section("Summary", text: note.summary)
                 section("Sentiment", text: note.sentiment)
                 section("Keywords", text: note.keywords?.joined(separator: ", "))
-                section("Translation", text: note.translation)
 
                 Divider()
 
