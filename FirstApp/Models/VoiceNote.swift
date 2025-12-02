@@ -27,8 +27,6 @@ final class VoiceNote {
     
     init(
         transcript: String,
-        type: NoteType = .agenda,
-        eventDate: Date = Date(),
         summary: String? = nil,
         sentiment: String? = nil,
         keywords: [String]? = nil,
@@ -37,12 +35,12 @@ final class VoiceNote {
         priority: String? = nil,
         eventDate: Date? = nil,
         detectedLanguage: String? = nil,
-        createdAt: Date? = nil,
-        noteType: NoteType? = nil
+        createdAt: Date = Date(),
+        noteType: NoteType = .note
     ) {
         self.id = UUID()
-        self.createdAt = createdAt ?? Date()
-        self.type = type
+        self.createdAt = createdAt
+        self.noteType = noteType
         self.eventDate = eventDate
         
         self.transcript = transcript
@@ -54,10 +52,8 @@ final class VoiceNote {
         self.category = category
         self.priority = priority
         
-        self.eventDate = eventDate
         self.isCompleted = false
         self.detectedLanguage = detectedLanguage
-        self.noteType = noteType ?? .note
     }
 }
 
