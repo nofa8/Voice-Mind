@@ -1,13 +1,15 @@
-// MainView.swift
 import SwiftUI
 
 struct MainView: View {
     @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss // Allows closing the sheet
+    @Environment(\.dismiss) private var dismiss
     
     @StateObject private var recorder = VoiceRecorderViewModel()
     
-    let languages = ["English", "Portuguese", "Spanish", "French", "German", "Italian"]
+    // Local state for view controls (will be connected to ViewModel in next step)
+    @State private var noteType: NoteType = .note
+    @State private var eventDate: Date = Date()
+    @State private var showPastDateAlert = false
     
     var body: some View {
         NavigationStack {
@@ -45,48 +47,39 @@ struct MainView: View {
                     .shadow(color: .black.opacity(0.05), radius: 5)
                     .padding(.horizontal)
                     
-                    // 3. Note Details (Type & Date)
-                    VStack(spacing: 15) {
-                        HStack {
-                            Text("Type:")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Picker("Type", selection: $recorder.selectedType) {
-                                ForEach(NoteType.allCases, id: \.self) { type in
-                                    Text(type.rawValue).tag(type)
-                                }
+                    // 3. Date & Type Selector (Replaces Translation)
+                    VStack(spacing: 16) {
+                        // Type Picker
+                        Picker("Type", selection: $noteType) {
+                            ForEach(NoteType.allCases, id: \.self) { type in
+                                Text(type.rawValue.capitalized).tag(type)
                             }
-                            .pickerStyle(.segmented)
-                            .frame(width: 150)
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: noteType) { oldValue, newValue in
+                            // Logic: Prevent Agenda selection if date is in the past
+                            if newValue == .agenda && eventDate < Date() {
+                                noteType = .note // Revert change
+                                showPastDateAlert = true
+                            }
                         }
                         
                         Divider()
                         
+                        // Date Picker
                         HStack {
-                            Text(recorder.selectedType == .agenda ? "Event Date:" : "Due Date:")
+                            Label(noteType == .agenda ? "Event Time" : "Timestamp", systemImage: "calendar")
+                                .foregroundStyle(Theme.textSecondary)
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                            
                             Spacer()
-                            DatePicker("", selection: $recorder.selectedDate, displayedComponents: [.date, .hourAndMinute])
-                                .labelsHidden()
-                        }
-                        
-                        Divider()
-                        
-                        // Language Picker
-                        HStack {
-                            Text("Translate Summary:")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Picker("", selection: $recorder.targetLanguage) {
-                                ForEach(languages, id: \.self) { lang in
-                                    Text(lang)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .tint(Theme.primary)
+                            
+                            DatePicker(
+                                "",
+                                selection: $eventDate,
+                                in: datePickerRange // Constrains selector based on type
+                            )
+                            .labelsHidden()
                         }
                     }
                     .padding()
@@ -98,8 +91,10 @@ struct MainView: View {
                     
                     // 4. Action Button
                     Button {
+                        // In MainView.swift action button:
                         if recorder.isRecording {
-                            recorder.stopRecording()
+                            // 👇 UPDATE THIS LINE
+                            recorder.stopRecording(noteType: noteType, eventDate: eventDate)
                         } else {
                             recorder.startRecording()
                         }
@@ -125,12 +120,27 @@ struct MainView: View {
                     }
                 }
             }
+            // Alert for invalid Agenda selection
+            .alert("Invalid Selection", isPresented: $showPastDateAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Only notes are enabled for past events.")
+            }
             .task {
                 await recorder.requestPermissions()
             }
             .onAppear {
                 recorder.setContext(context)
             }
+        }
+    }
+    
+    // Helper to restrict DatePicker range
+    var datePickerRange: PartialRangeFrom<Date> {
+        if noteType == .agenda {
+            return Date()... // Agenda must be Future
+        } else {
+            return Date.distantPast... // Notes can be Past or Future
         }
     }
 }
