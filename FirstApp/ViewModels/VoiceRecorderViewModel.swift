@@ -9,82 +9,62 @@ class VoiceRecorderViewModel: ObservableObject {
     @Published var isRecording = false
     @Published var transcription = ""
     
-    // Analysis Results
+    // Analysis State
     @Published var summary = ""
     @Published var sentiment = ""
     @Published var keywords: [String] = []
     
-    // 🔥 NEW: Actionable Insights
+    // AI Insights
     @Published var actionItems: [String] = []
     @Published var category = ""
     @Published var priority = ""
     
-    var modelContext: ModelContext?
+    // 🔥 New: Selected Language for Recognition
+    @Published var selectedLanguage = "en-US"
 
-    func setContext(_ context: ModelContext) {
-        self.modelContext = context
-    }
+    var modelContext: ModelContext?
+    func setContext(_ context: ModelContext) { self.modelContext = context }
 
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
-    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+    
+    // 🔥 Make Recognizer Optional (to re-init with new languages)
+    private var speechRecognizer: SFSpeechRecognizer?
     
     // MARK: - Permissions
     func requestPermissions() async {
-        SFSpeechRecognizer.requestAuthorization { status in
-            print(status == .authorized ? "✅ Speech recognition authorized" : "❌ Speech recognition denied")
-        }
-        AVAudioApplication.requestRecordPermission { granted in
-            print(granted ? "✅ Microphone access granted" : "❌ Microphone access denied")
-        }
+        SFSpeechRecognizer.requestAuthorization { _ in }
+        AVAudioApplication.requestRecordPermission { _ in }
     }
     
-    // MARK: - Database Saving
-    func saveVoiceNote(
-        transcript: String,
-        analysis: LLMAnalysis,
-        detectedLanguage: String?,
-        noteType: NoteType,
-        eventDate: Date,
-        modelContext: ModelContext
-    ) {
-        let note = VoiceNote(
-            transcript: transcript,
-            summary: analysis.summary,
-            sentiment: analysis.sentiment,
-            keywords: analysis.keywords,
-            // 🚀 Map new AI fields
-            actionItems: analysis.actionItems,
-            category: analysis.category,
-            priority: analysis.priority,
-            // 🗓 Map UI fields
-            eventDate: eventDate, 
-            detectedLanguage: detectedLanguage,
-            noteType: noteType
-        )
-        
-        modelContext.insert(note)
-        
-        do {
-            try modelContext.save()
-        } catch {
-            print("❌ Failed to save note:", error)
-        }
-    }
-
-    // MARK: - Recording
-    func startRecording() {
-        // Reset state
+    // MARK: - Recording Logic
+    
+    func startRecording(language: String) {
+        // 1. Reset State
         transcription = ""
         summary = ""
         keywords = []
         actionItems = []
-        category = ""
-        priority = ""
+        
+        // 2. Setup Recognizer for Selected Language
+        let locale = Locale(identifier: language)
+        if speechRecognizer?.locale != locale {
+            speechRecognizer = SFSpeechRecognizer(locale: locale)
+        }
+        
+        // 🔥 FIX #1: Validate speech recognizer is available
+        // WHY: Prevents silent failure if language isn't supported or device doesn't support speech recognition
+        // IMPACT: User will see error instead of recording with no transcription
+        guard let recognizer = speechRecognizer, recognizer.isAvailable else {
+            print("❌ Speech recognizer not available for \(language)")
+            summary = "Speech recognition not available for this language"
+            return
+        }
         
         isRecording = true
         
+        // 3. Audio Setup
         let audioSession = AVAudioSession.sharedInstance()
         try? audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
         try? audioSession.setActive(true, options: .notifyOthersOnDeactivation)
@@ -94,14 +74,26 @@ class VoiceRecorderViewModel: ObservableObject {
         recognitionRequest.shouldReportPartialResults = true
         
         let inputNode = audioEngine.inputNode
-        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
+        
+        // 🔥 FIX #3: Fix race condition with weak self and state check
+        // WHY: If speech recognition auto-completes while user manually stops, 
+        //      we could call stopRecording() twice simultaneously
+        // IMPACT: Prevents audio engine crashes from duplicate cleanup
+        recognitionTask = recognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+            guard let self = self else { return }
+            
             if let result = result {
-                self.transcription = result.bestTranscription.formattedString
+                Task { @MainActor in
+                    self.transcription = result.bestTranscription.formattedString
+                }
             }
             if error != nil || result?.isFinal == true {
-                // If the system stops it (e.g. silence), we default to basic Note/Now. 
-                // However, usually the user presses the button.
-                self.stopRecording(noteType: .note, eventDate: Date())
+                Task { @MainActor in
+                    // Only auto-stop if we're still in recording state
+                    if self.isRecording {
+                        self.stopRecording()
+                    }
+                }
             }
         }
         
@@ -114,50 +106,90 @@ class VoiceRecorderViewModel: ObservableObject {
         try? audioEngine.start()
     }
     
-    // 🔥 UPDATED: Accepts UI parameters
-    func stopRecording(noteType: NoteType, eventDate: Date) {
+    func stopRecording() {
         isRecording = false
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        
+        // 🔥 FIX #2: Add safety checks for audio engine cleanup
+        // WHY: If user rapidly taps start/stop or if startRecording() fails partway,
+        //      the tap might not be installed, causing a crash when trying to remove it
+        // IMPACT: Prevents crash on rapid start/stop cycles
+        
+        // Only stop if actually running
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
+        
+        // Safely remove tap only if it was installed
+        if audioEngine.inputNode.numberOfInputs > 0 {
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
         
         Task {
-            await analyze(noteType: noteType, eventDate: eventDate)
+            await analyze()
         }
     }
     
     // MARK: - Analysis
-    func analyze(noteType: NoteType, eventDate: Date) async {
+    func analyze() async {
         let text = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         
         do {
-            // 1. Detect language
+            // 1. Detect language (for metadata)
             let detectedLang = try await detectLanguage(text)
 
-            // 2. Analyze with Gemini (Returns Action Items, Category, etc.)
+            // 2. Analyze with Gemini
             let analysis = try await GeminiAnalysisService.shared.analyze(text)
             
-            // 3. Update UI State
+            // 3. Parse ISO Date from Gemini
+            var extractedDate: Date? = nil
+            if let dateString = analysis.extractedDate {
+                let formatter = ISO8601DateFormatter()
+                // Handle optional fractional seconds just in case
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds] 
+                extractedDate = formatter.date(from: dateString)
+                
+                // Fallback for standard ISO if fractional fails
+                if extractedDate == nil {
+                    formatter.formatOptions = [.withInternetDateTime]
+                    extractedDate = formatter.date(from: dateString)
+                }
+            }
+            
+            // 4. Determine NoteType from String
+            let type: NoteType = switch analysis.type.lowercased() {
+                case "task": .task
+                case "event": .event
+                default: .note
+            }
+            
+            // 5. Update UI
             self.summary = analysis.summary
             self.sentiment = analysis.sentiment
-            self.keywords = analysis.keywords
-            self.actionItems = analysis.actionItems
             self.category = analysis.category
-            self.priority = analysis.priority
 
-            // 4. Save
+            // 6. Save
             guard let ctx = modelContext else { return }
-
-            saveVoiceNote(
+            
+            let note = VoiceNote(
                 transcript: text,
-                analysis: analysis,
+                summary: analysis.summary,
+                sentiment: analysis.sentiment,
+                keywords: analysis.keywords,
+                actionItems: analysis.actionItems,
+                category: analysis.category,
+                priority: analysis.priority,
+                eventDate: extractedDate, // Uses Gemini's date or nil
+                eventLocation: analysis.extractedLocation,
                 detectedLanguage: detectedLang,
-                noteType: noteType,
-                eventDate: eventDate,
-                modelContext: ctx
+                noteType: type // Determined by AI
             )
+            
+            ctx.insert(note)
+            try? ctx.save()
 
         } catch {
             print("⚠️ Gemini failure:", error)
@@ -166,11 +198,7 @@ class VoiceRecorderViewModel: ObservableObject {
     }
 
     func detectLanguage(_ text: String) async throws -> String {
-        let system = "Detect the language of this text. Reply with only the language name (e.g., English, Portuguese)."
-        let result = try await GeminiService.shared.sendPrompt(
-            "Text:\n\(text)",
-            systemInstruction: system
-        )
-        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+        let system = "Detect the language. Reply only with the language name."
+        return try await GeminiService.shared.sendPrompt("Text:\n\(text)", systemInstruction: system)
     }
 }

@@ -7,22 +7,40 @@ struct NoteRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                // 1. Fixed: Use 'note.noteType' instead of 'note.type'
-                Image(systemName: note.noteType == NoteType.agenda ? "calendar" : "doc.text")
-                    .foregroundStyle(note.noteType == NoteType.agenda ? .blue : .orange)
+                // 🔥 Updated Icon Logic for 3 Types
+                let icon = switch note.noteType {
+                    case .task: "checklist"
+                    case .event: "calendar"
+                    case .note: "doc.text"
+                }
                 
-                // 1. Fixed: Use 'note.noteType'
+                let iconColor = switch note.noteType {
+                    case .task: Color.green
+                    case .event: Color.blue
+                    case .note: Color.orange
+                }
+                
+                Image(systemName: icon)
+                    .foregroundStyle(iconColor)
+                
                 Text(note.noteType.rawValue.capitalized)
                     .font(.caption)
                     .fontWeight(.bold)
-                    .foregroundStyle(note.noteType == NoteType.agenda ? .blue : .orange)
+                    .foregroundStyle(iconColor)
 
                 Spacer()
                 
-                // 2. Fixed: Handle optional Date. Use eventDate if available, else createdAt
-                Text((note.eventDate ?? note.createdAt).formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
+                // Display Date if it exists (for events/tasks)
+                if let date = note.eventDate {
+                    Text(date.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                } else {
+                    // Fallback to createdAt
+                    Text(note.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
             
             Text(note.summary ?? note.transcript)
@@ -31,7 +49,18 @@ struct NoteRow: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
             
-            // Optional: Display Priority if you want (since we added it to the model)
+            // Display Event Location if Available
+            if let location = note.eventLocation, !location.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "location.fill")
+                        .font(.caption2)
+                    Text(location)
+                        .font(.caption2)
+                }
+                .foregroundStyle(Theme.textSecondary)
+            }
+            
+            // Display Priority if Available
             if let priority = note.priority, !priority.isEmpty {
                 Text(priority.uppercased())
                     .font(.caption2)

@@ -4,7 +4,12 @@ import SwiftData
 struct AgendaView: View {
     @Environment(\.modelContext) private var context
     
-    @Query(sort: \VoiceNote.eventDate, order: .reverse)
+
+    @Query(
+        filter: #Predicate<VoiceNote> { $0.eventDate != nil },
+        sort: \VoiceNote.eventDate,
+        order: .reverse
+    )
     private var allNotes: [VoiceNote]
     
     @State private var timeFrame: TimeFrame = .month
@@ -45,6 +50,7 @@ struct AgendaView: View {
                         Text(headerTitle)
                             .font(.title2)
                             .fontWeight(.bold)
+                            .animation(.none, value: currentDate) // Fix text animation jitter
                         
                         Spacer()
                         
@@ -75,7 +81,8 @@ struct AgendaView: View {
                             case .year:
                                 YearView(
                                     currentDate: currentDate,
-                                    notes: allNotes,
+                                    // ⚡️ OPTIMIZATION 2: Pass 'filteredNotes' instead of 'allNotes'
+                                    notes: filteredNotes,
                                     onMonthTap: { date in
                                         currentDate = date
                                         timeFrame = .month
@@ -155,27 +162,21 @@ struct AgendaView: View {
     }
     
     private func previousPeriod() {
-        let calendar = Calendar.current
-        switch timeFrame {
-        case .week:
-            currentDate = calendar.date(byAdding: .weekOfYear, value: -1, to: currentDate) ?? currentDate
-        case .month:
-            currentDate = calendar.date(byAdding: .month, value: -1, to: currentDate) ?? currentDate
-        case .year:
-            currentDate = calendar.date(byAdding: .year, value: -1, to: currentDate) ?? currentDate
-        }
+        movePeriod(by: -1)
     }
     
     private func nextPeriod() {
+        movePeriod(by: 1)
+    }
+    
+    private func movePeriod(by value: Int) {
         let calendar = Calendar.current
-        switch timeFrame {
-        case .week:
-            currentDate = calendar.date(byAdding: .weekOfYear, value: 1, to: currentDate) ?? currentDate
-        case .month:
-            currentDate = calendar.date(byAdding: .month, value: 1, to: currentDate) ?? currentDate
-        case .year:
-            currentDate = calendar.date(byAdding: .year, value: 1, to: currentDate) ?? currentDate
+        let component: Calendar.Component = switch timeFrame {
+            case .week: .weekOfYear
+            case .month: .month
+            case .year: .year
         }
+        currentDate = calendar.date(byAdding: component, value: value, to: currentDate) ?? currentDate
     }
 }
 
