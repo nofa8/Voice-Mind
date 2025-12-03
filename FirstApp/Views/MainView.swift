@@ -1,15 +1,31 @@
 import SwiftUI
 
+// Define supported languages
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case englishUS = "en-US"
+    case portuguese = "pt-PT"
+    case spanish = "es-ES"
+    case french = "fr-FR"
+    case german = "de-DE"
+    
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .englishUS: return "🇺🇸 English"
+        case .portuguese: return "🇵🇹 Portuguese"
+        case .spanish: return "🇪🇸 Spanish"
+        case .french: return "🇫🇷 French"
+        case .german: return "🇩🇪 German"
+        }
+    }
+}
+
 struct MainView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     
     @StateObject private var recorder = VoiceRecorderViewModel()
-    
-    // Local state for view controls (will be connected to ViewModel in next step)
-    @State private var noteType: NoteType = .note
-    @State private var eventDate: Date = Date()
-    @State private var showPastDateAlert = false
+    @State private var selectedLanguage: AppLanguage = .englishUS // Default
     
     var body: some View {
         NavigationStack {
@@ -18,7 +34,7 @@ struct MainView: View {
                 
                 VStack(spacing: 30) {
                     
-                    // 1. Dynamic Header
+                    // 1. Header
                     VStack(spacing: 10) {
                         Image(systemName: recorder.isRecording ? "waveform.circle.fill" : "mic.circle.fill")
                             .resizable()
@@ -33,9 +49,9 @@ struct MainView: View {
                     }
                     .padding(.top, 40)
                     
-                    // 2. Live Transcript Card
+                    // 2. Transcript
                     ScrollView {
-                        Text(recorder.transcription.isEmpty ? "Your speech will appear here..." : recorder.transcription)
+                        Text(recorder.transcription.isEmpty ? "Say something like 'Lunch with John tomorrow at 2pm'..." : recorder.transcription)
                             .font(.body)
                             .foregroundStyle(recorder.transcription.isEmpty ? .gray : .primary)
                             .padding()
@@ -47,40 +63,18 @@ struct MainView: View {
                     .shadow(color: .black.opacity(0.05), radius: 5)
                     .padding(.horizontal)
                     
-                    // 3. Date & Type Selector (Replaces Translation)
-                    VStack(spacing: 16) {
-                        // Type Picker
-                        Picker("Type", selection: $noteType) {
-                            ForEach(NoteType.allCases, id: \.self) { type in
-                                Text(type.rawValue.capitalized).tag(type)
+                    // 3. Language Selector (Replaces Manual Type Selector)
+                    VStack(spacing: 12) {
+                        Text("Speaking Language")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+                        
+                        Picker("Language", selection: $selectedLanguage) {
+                            ForEach(AppLanguage.allCases) { lang in
+                                Text(lang.displayName).tag(lang)
                             }
                         }
                         .pickerStyle(.segmented)
-                        .onChange(of: noteType) { oldValue, newValue in
-                            // Logic: Prevent Agenda selection if date is in the past
-                            if newValue == .agenda && eventDate < Date() {
-                                noteType = .note // Revert change
-                                showPastDateAlert = true
-                            }
-                        }
-                        
-                        Divider()
-                        
-                        // Date Picker
-                        HStack {
-                            Label(noteType == .agenda ? "Event Time" : "Timestamp", systemImage: "calendar")
-                                .foregroundStyle(Theme.textSecondary)
-                                .font(.subheadline)
-                            
-                            Spacer()
-                            
-                            DatePicker(
-                                "",
-                                selection: $eventDate,
-                                in: datePickerRange // Constrains selector based on type
-                            )
-                            .labelsHidden()
-                        }
                     }
                     .padding()
                     .background(Theme.cardBackground)
@@ -91,15 +85,14 @@ struct MainView: View {
                     
                     // 4. Action Button
                     Button {
-                        // In MainView.swift action button:
                         if recorder.isRecording {
-                            // 👇 UPDATE THIS LINE
-                            recorder.stopRecording(noteType: noteType, eventDate: eventDate)
+                            recorder.stopRecording()
                         } else {
-                            recorder.startRecording()
+                            // Pass selected language to the engine
+                            recorder.startRecording(language: selectedLanguage.rawValue)
                         }
                     } label: {
-                        Text(recorder.isRecording ? "Stop & Analyze" : "Start Recording")
+                        Text(recorder.isRecording ? "Stop & AI Process" : "Start Recording")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -111,36 +104,15 @@ struct MainView: View {
                     .padding(.bottom, 20)
                 }
             }
-            .navigationTitle("New Note")
+            .navigationTitle("AI Note")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }
                 }
             }
-            // Alert for invalid Agenda selection
-            .alert("Invalid Selection", isPresented: $showPastDateAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("Only notes are enabled for past events.")
-            }
-            .task {
-                await recorder.requestPermissions()
-            }
-            .onAppear {
-                recorder.setContext(context)
-            }
-        }
-    }
-    
-    // Helper to restrict DatePicker range
-    var datePickerRange: PartialRangeFrom<Date> {
-        if noteType == .agenda {
-            return Date()... // Agenda must be Future
-        } else {
-            return Date.distantPast... // Notes can be Past or Future
+            .task { await recorder.requestPermissions() }
+            .onAppear { recorder.setContext(context) }
         }
     }
 }

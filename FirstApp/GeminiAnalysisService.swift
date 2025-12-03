@@ -7,7 +7,7 @@
 
 import Foundation
 
-// 1. Updated struct to match the new VoiceNote model fields
+// 🔥 UPDATED Struct: Matches the new AI logic
 struct LLMAnalysis: Codable {
     let summary: String
     let sentiment: String
@@ -15,6 +15,9 @@ struct LLMAnalysis: Codable {
     let actionItems: [String]
     let category: String
     let priority: String
+    let type: String            // note, task, event
+    let extractedDate: String?  // ISO8601 String
+    let extractedLocation: String?
 }
 
 final class GeminiAnalysisService {
@@ -22,36 +25,40 @@ final class GeminiAnalysisService {
     private init() {}
     
     func analyze(_ text: String) async throws -> LLMAnalysis {
-        // 2. Updated System Instruction with new JSON Schema
-        let systemInstruction = """
-        You are an intelligent personal assistant. Analyze the text and return structured JSON.
-        Output must strictly follow this JSON schema. Do not include any surrounding markdown or backticks.
+        // 🔥 Inject Current Date for Context
+        let currentDate = Date().formatted(date: .numeric, time: .shortened)
         
+        let systemInstruction = """
+        You are an intelligent personal assistant. Analyze the transcript.
+        Current Date/Time: \(currentDate). Use this to resolve relative dates (e.g., "tomorrow", "next Friday").
+        
+        Return JSON strictly matching this schema:
         {
           "summary": "Concise 1-sentence summary",
           "sentiment": "Positive | Negative | Neutral",
-          "keywords": ["tag1", "tag2", "tag3"],
+          "keywords": ["tag1", "tag2"],
           "actionItems": ["Task 1", "Task 2"],
-          "category": "Work | Personal | Health | Finance | Idea | Other",
-          "priority": "High | Medium | Low"
+          "category": "Work | Personal | Health | Finance | Idea",
+          "priority": "High | Medium | Low",
+          "type": "note | task | event",
+          "extractedDate": "ISO8601 date string (YYYY-MM-DDTHH:mm:ss) ONLY if a specific time/date is mentioned. Otherwise null.",
+          "extractedLocation": "Location name if mentioned, else null"
         }
         
         Rules:
-        - If there are no clear action items, return an empty array for "actionItems".
-        - Choose the single best fit for "category".
-        - Determine "priority" based on urgency and emotional tone.
+        - "type": "task" if it implies an action to do. "event" if it has a specific time/place. "note" otherwise.
+        - "extractedDate": Must be strictly ISO8601.
         """
         
-        let prompt = "Analyze the following text and respond ONLY with the JSON object:\n\(text)"
+        let prompt = "Analyze this:\n\(text)"
         
-        // Use responseMimeType: "application/json" for guaranteed JSON output
         let rawResponse = try await GeminiService.shared.sendPrompt(
             prompt,
             systemInstruction: systemInstruction,
             responseMimeType: "application/json"
         )
         
-        // Clean response just in case (though responseMimeType usually prevents this)
+        // Cleanup
         let cleanedResponse = rawResponse.trimmingCharacters(in: .whitespacesAndNewlines)
                                          .replacingOccurrences(of: "```json", with: "")
                                          .replacingOccurrences(of: "```", with: "")
@@ -63,7 +70,7 @@ final class GeminiAnalysisService {
         do {
             return try JSONDecoder().decode(LLMAnalysis.self, from: jsonData)
         } catch let error {
-            print("Failed to decode final LLMAnalysis JSON. Raw text: \(rawResponse)")
+            print("Failed to decode. Raw: \(rawResponse)")
             throw GeminiError.decoding(error)
         }
     }

@@ -19,11 +19,13 @@ final class VoiceNote {
     var priority: String?      // "High", "Medium", "Low"
     
     var eventDate: Date?       // When the event happens
-    var isCompleted: Bool      // Checkbox for agenda items
-    var noteType: NoteType     // Note vs Agenda
-    
+    var isCompleted: Bool      // Checkbox for task items
+    var noteType: NoteType     
+    var eventLocation: String? // Where the event happens
+
     // Metadata
     var detectedLanguage: String? 
+    
     
     init(
         transcript: String,
@@ -34,6 +36,7 @@ final class VoiceNote {
         category: String? = nil,
         priority: String? = nil,
         eventDate: Date? = nil,
+        eventLocation: String? = nil,
         detectedLanguage: String? = nil,
         createdAt: Date = Date(),
         noteType: NoteType = .note
@@ -42,6 +45,7 @@ final class VoiceNote {
         self.createdAt = createdAt
         self.noteType = noteType
         self.eventDate = eventDate
+        self.eventLocation = eventLocation
         
         self.transcript = transcript
         self.summary = summary
@@ -59,6 +63,7 @@ final class VoiceNote {
 
 // Simplified Enum
 enum NoteType: String, CaseIterable, Codable {
-    case agenda // Has a specific date/deadline
-    case note   // General thought/journal
+    case note         // Standard thought/journal
+    case task         // Actionable item (needs a checkbox)
+    case event        // Has a specific time/location (meeting)
 }
