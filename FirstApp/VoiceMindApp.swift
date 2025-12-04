@@ -24,7 +24,7 @@ struct VoiceMindApp: App {
                     VoiceNotesListView()
                 }
                 .tabItem {
-                    Label("Notes", systemImage: "note.text")
+                    Label("Library", systemImage: "tray.fill")
                 }
 
                 NavigationStack {
