@@ -74,10 +74,14 @@ struct VoiceNoteDetailView: View {
     @State var note: VoiceNote
     @StateObject private var audioPlayer = AudioPlayerManager()
     
-    // 🔥 Calendar state
-    @State private var showingCalendarAlert = false
-    @State private var calendarAlertMessage = ""
+    // 🔥 Toast state (replaces alerts for success)
+    @State private var showToast = false
+    @State private var toastMessage = ""
+    @State private var toastType: ToastType = .success
+    
+    // Loading states
     @State private var isAddingToCalendar = false
+    @State private var addingReminderIndex: Int? = nil
 
     var body: some View {
         ScrollView {
@@ -132,10 +136,15 @@ struct VoiceNoteDetailView: View {
         .onDisappear {
             audioPlayer.cleanup()
         }
-        .alert("Calendar", isPresented: $showingCalendarAlert) {
-            Button("OK") { }
-        } message: {
-            Text(calendarAlertMessage)
+        .toast(isPresented: $showToast, message: toastMessage, type: toastType)
+    }
+    
+    // MARK: - Show Toast Helper
+    private func showToastMessage(_ message: String, type: ToastType) {
+        toastMessage = message
+        toastType = type
+        withAnimation {
+            showToast = true
         }
     }
     
@@ -205,6 +214,13 @@ struct VoiceNoteDetailView: View {
                 .font(.headline)
                 .foregroundStyle(color)
             
+            // 🔥 Pin indicator
+            if note.isPinned {
+                Image(systemName: "pin.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            
             Spacer()
             
             if let priority = note.priority, !priority.isEmpty {
@@ -265,17 +281,59 @@ struct VoiceNoteDetailView: View {
                         .font(.headline)
                     
                     ForEach(Array(actionItems.enumerated()), id: \.offset) { index, item in
-                        HStack(alignment: .top, spacing: 8) {
+                        HStack(alignment: .center, spacing: 8) {
                             Image(systemName: "\(index + 1).circle.fill")
                                 .foregroundStyle(Theme.primary)
+                            
                             Text(item)
                                 .font(.body)
+                            
+                            Spacer()
+                            
+                            // 🔥 Add to Reminders button per item
+                            Button {
+                                addToReminders(item: item, index: index)
+                            } label: {
+                                if addingReminderIndex == index {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                } else {
+                                    Image(systemName: "checklist")
+                                        .foregroundStyle(.blue)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(addingReminderIndex != nil)
                         }
+                        .padding(.vertical, 4)
                     }
                 }
                 .padding()
                 .background(Theme.primary.opacity(0.05))
                 .cornerRadius(Theme.cornerRadius)
+            }
+        }
+    }
+    
+    // 🔥 Add action item to Apple Reminders
+    private func addToReminders(item: String, index: Int) {
+        addingReminderIndex = index
+        
+        Task {
+            let result = await RemindersManager.shared.addReminder(
+                title: item,
+                notes: "From: \(note.summary ?? note.transcript)"
+            )
+            
+            await MainActor.run {
+                addingReminderIndex = nil
+                
+                switch result {
+                case .success:
+                    showToastMessage("Added to Reminders", type: .success)
+                case .failure(let error):
+                    showToastMessage(error.localizedDescription, type: .error)
+                }
             }
         }
     }
@@ -303,11 +361,15 @@ struct VoiceNoteDetailView: View {
                     
                     Spacer()
                     
-                    // 🔥 Add to Calendar button
+                    // Add to Calendar button
                     Button(action: addToCalendar) {
                         VStack(spacing: 4) {
-                            Image(systemName: isAddingToCalendar ? "hourglass" : "calendar.badge.plus")
-                                .font(.title2)
+                            if isAddingToCalendar {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "calendar.badge.plus")
+                                    .font(.title2)
+                            }
                             Text("Add")
                                 .font(.caption2)
                         }
@@ -341,7 +403,7 @@ struct VoiceNoteDetailView: View {
         }
     }
     
-    // 🔥 Add to Calendar action
+    // Add to Calendar action (now uses toast)
     private func addToCalendar() {
         guard let eventDate = note.eventDate else { return }
         
@@ -361,11 +423,10 @@ struct VoiceNoteDetailView: View {
                 
                 switch result {
                 case .success:
-                    calendarAlertMessage = "Event added to your calendar!"
+                    showToastMessage("Added to Calendar", type: .success)
                 case .failure(let error):
-                    calendarAlertMessage = error.localizedDescription
+                    showToastMessage(error.localizedDescription, type: .error)
                 }
-                showingCalendarAlert = true
             }
         }
     }
