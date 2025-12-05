@@ -7,7 +7,7 @@
 
 import Foundation
 
-// 🔥 UPDATED Struct: Matches the new AI logic
+// Response struct matching AI output
 struct LLMAnalysis: Codable {
     let summary: String
     let sentiment: String
@@ -25,32 +25,57 @@ final class GeminiAnalysisService {
     private init() {}
     
     func analyze(_ text: String) async throws -> LLMAnalysis {
-        // 🔥 Inject Current Date for Context
-        let currentDate = Date().formatted(date: .numeric, time: .shortened)
+        // 🔥 Provide FULL date context for AI
+        let now = Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm a"  // "Thursday, December 5, 2024 at 3:46 PM"
+        let fullDateTime = formatter.string(from: now)
+        
+        // Also provide ISO format for reference
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withDashSeparatorInDate, .withColonSeparatorInTime, .withTimeZone]
+        isoFormatter.timeZone = TimeZone.current
+        let isoDate = isoFormatter.string(from: now)
         
         let systemInstruction = """
-        You are an intelligent personal assistant. Analyze the transcript.
-        Current Date/Time: \(currentDate). Use this to resolve relative dates (e.g., "tomorrow", "next Friday").
+        You are an intelligent personal assistant analyzing voice notes.
+        
+        CURRENT DATE/TIME CONTEXT:
+        - Human readable: \(fullDateTime)
+        - ISO8601: \(isoDate)
+        - Use this to resolve relative dates like "tomorrow", "next week", "Monday", etc.
         
         Return JSON strictly matching this schema:
         {
-          "summary": "Concise 1-sentence summary",
+          "summary": "First-person summary using 'I' (not 'The user'). Example: 'I have a dentist appointment tomorrow at 8am.'",
           "sentiment": "Positive | Negative | Neutral",
-          "keywords": ["tag1", "tag2"],
-          "actionItems": ["Task 1", "Task 2"],
+          "keywords": ["keyword1", "keyword2"],
+          "actionItems": ["Action 1", "Action 2"],
           "category": "Work | Personal | Health | Finance | Idea",
           "priority": "High | Medium | Low",
           "type": "note | task | event",
-          "extractedDate": "ISO8601 date string (YYYY-MM-DDTHH:mm:ss) ONLY if a specific time/date is mentioned. Otherwise null.",
+          "extractedDate": "ISO8601 format (YYYY-MM-DDTHH:mm:ss). CALCULATE from relative terms like 'tomorrow', 'next Monday'. Return null ONLY if NO time reference exists.",
           "extractedLocation": "Location name if mentioned, else null"
         }
         
-        Rules:
-        - "type": "task" if it implies an action to do. "event" if it has a specific time/place. "note" otherwise.
-        - "extractedDate": Must be strictly ISO8601.
+        CRITICAL RULES:
+        1. "extractedDate": You MUST calculate dates from relative terms!
+           - If today is \(fullDateTime) and user says "tomorrow at 8am", calculate the actual ISO8601 date.
+           - "tomorrow" = add 1 day to current date
+           - "next Monday" = find the next Monday from today
+           - ALWAYS include the time if mentioned (e.g., "8am" -> T08:00:00)
+        
+        2. "type": 
+           - "event" = has a time/date/place (appointments, meetings, etc.)
+           - "task" = action items without specific time
+           - "note" = general thoughts/observations
+        
+        3. "summary": Write from user's perspective using "I" (first person).
+           - CORRECT: "I have a dentist appointment tomorrow at 8am."
+           - WRONG: "The user has a dentist appointment."
         """
         
-        let prompt = "Analyze this:\n\(text)"
+        let prompt = "Analyze this voice note:\n\(text)"
         
         let rawResponse = try await GeminiService.shared.sendPrompt(
             prompt,
