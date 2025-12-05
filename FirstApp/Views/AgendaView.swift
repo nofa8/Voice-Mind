@@ -8,7 +8,7 @@ struct AgendaView: View {
     @Query(
         filter: #Predicate<VoiceNote> { $0.eventDate != nil },
         sort: \VoiceNote.eventDate,
-        order: .forward  // Changed to forward for chronological
+        order: .forward
     )
     private var notesWithDates: [VoiceNote]
     
