@@ -4,17 +4,31 @@ import SwiftData
 struct AgendaView: View {
     @Environment(\.modelContext) private var context
     
-
+    // Query notes WITH dates (for calendar display)
     @Query(
         filter: #Predicate<VoiceNote> { $0.eventDate != nil },
         sort: \VoiceNote.eventDate,
+        order: .forward  // Changed to forward for chronological
+    )
+    private var notesWithDates: [VoiceNote]
+    
+    // 🔥 NEW: Query event-type notes WITHOUT dates
+    @Query(
+        filter: #Predicate<VoiceNote> { $0.eventDate == nil },
+        sort: \VoiceNote.createdAt,
         order: .reverse
     )
-    private var allNotes: [VoiceNote]
+    private var allNotesWithoutDates: [VoiceNote]
+    
+    // Filter to only event types without dates
+    private var eventsWithoutDates: [VoiceNote] {
+        allNotesWithoutDates.filter { $0.noteType == .event }
+    }
     
     @State private var timeFrame: TimeFrame = .month
     @State private var currentDate = Date()
     @State private var selectedDate: Date?
+    @State private var showEventsWithoutDates = false  // 🔥 Toggle for dateless events
     
     enum TimeFrame: String, CaseIterable {
         case week = "Week"
@@ -50,7 +64,7 @@ struct AgendaView: View {
                         Text(headerTitle)
                             .font(.title2)
                             .fontWeight(.bold)
-                            .animation(.none, value: currentDate) // Fix text animation jitter
+                            .animation(.none, value: currentDate)
                         
                         Spacer()
                         
@@ -81,7 +95,6 @@ struct AgendaView: View {
                             case .year:
                                 YearView(
                                     currentDate: currentDate,
-                                    // ⚡️ OPTIMIZATION 2: Pass 'filteredNotes' instead of 'allNotes'
                                     notes: filteredNotes,
                                     onMonthTap: { date in
                                         currentDate = date
@@ -97,6 +110,11 @@ struct AgendaView: View {
                                     notes: notesForDate(selectedDate)
                                 )
                             }
+                            
+                            // 🔥 NEW: Events without dates section
+                            if !eventsWithoutDates.isEmpty {
+                                eventsWithoutDatesSection
+                            }
                         }
                         .padding()
                     }
@@ -107,6 +125,39 @@ struct AgendaView: View {
                 VoiceNoteDetailView(note: note)
             }
         }
+    }
+    
+    // 🔥 NEW: Section for events without specific dates
+    private var eventsWithoutDatesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: { showEventsWithoutDates.toggle() }) {
+                HStack {
+                    Image(systemName: "calendar.badge.exclamationmark")
+                        .foregroundColor(.orange)
+                    Text("Events Without Dates (\(eventsWithoutDates.count))")
+                        .font(.headline)
+                    Spacer()
+                    Image(systemName: showEventsWithoutDates ? "chevron.up" : "chevron.down")
+                        .foregroundColor(Theme.textSecondary)
+                }
+            }
+            .buttonStyle(.plain)
+            
+            if showEventsWithoutDates {
+                Text("These events were detected but no specific date was mentioned.")
+                    .font(.caption)
+                    .foregroundColor(Theme.textSecondary)
+                
+                ForEach(eventsWithoutDates) { note in
+                    NavigationLink(value: note) {
+                        NoteRow(note: note)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Theme.cardBackground)
+        .cornerRadius(Theme.cornerRadius)
     }
     
     // MARK: - Helper Functions
@@ -147,7 +198,7 @@ struct AgendaView: View {
         
         guard let range = range else { return [] }
         
-        return allNotes.filter { note in
+        return notesWithDates.filter { note in
             guard let eventDate = note.eventDate else { return false }
             return range.contains(eventDate)
         }
@@ -155,7 +206,7 @@ struct AgendaView: View {
     
     private func notesForDate(_ date: Date) -> [VoiceNote] {
         let calendar = Calendar.current
-        return allNotes.filter { note in
+        return notesWithDates.filter { note in
             guard let eventDate = note.eventDate else { return false }
             return calendar.isDate(eventDate, inSameDayAs: date)
         }
