@@ -262,12 +262,73 @@ struct VoiceNotesListView: View {
         }
     }
     
+    // 🔥 Dynamic counts based on advanced filters
     private func filterCount(for filter: NoteFilter) -> Int {
+        // Apply advanced filters first (without type filter)
+        var base = notes
+        
+        // Date filter
+        if filterState.dateFilter != .all {
+            let calendar = Calendar.current
+            let now = Date()
+            base = base.filter { note in
+                switch filterState.dateFilter {
+                case .today: return calendar.isDateInToday(note.createdAt)
+                case .thisWeek: return calendar.isDate(note.createdAt, equalTo: now, toGranularity: .weekOfYear)
+                case .thisMonth: return calendar.isDate(note.createdAt, equalTo: now, toGranularity: .month)
+                case .all: return true
+                }
+            }
+        }
+        
+        // Category filter
+        if !filterState.selectedCategories.isEmpty {
+            base = base.filter { note in
+                guard let category = note.category else { return false }
+                return filterState.selectedCategories.contains(category)
+            }
+        }
+        
+        // Priority filter
+        if !filterState.selectedPriorities.isEmpty {
+            base = base.filter { note in
+                guard let priority = note.priority else { return false }
+                return filterState.selectedPriorities.contains(priority)
+            }
+        }
+        
+        // Sentiment filter
+        if let sentiment = filterState.selectedSentiment {
+            base = base.filter { note in
+                guard let noteSentiment = note.sentiment else { return false }
+                return noteSentiment.lowercased() == sentiment.lowercased()
+            }
+        }
+        
+        // Keywords filter
+        if !filterState.selectedKeywords.isEmpty {
+            base = base.filter { note in
+                guard let noteKeywords = note.keywords else { return false }
+                return !filterState.selectedKeywords.isDisjoint(with: Set(noteKeywords))
+            }
+        }
+        
+        // Show/hide completed
+        if !filterState.showCompletedTasks {
+            base = base.filter { !$0.isCompleted }
+        }
+        
+        // Only with audio
+        if filterState.onlyWithAudio {
+            base = base.filter { $0.audioFilePath != nil }
+        }
+        
+        // Now count by type
         switch filter {
-        case .all: return notes.count
-        case .notes: return notes.filter { $0.noteType == .note }.count
-        case .tasks: return notes.filter { $0.noteType == .task }.count
-        case .events: return notes.filter { $0.noteType == .event }.count
+        case .all: return base.count
+        case .notes: return base.filter { $0.noteType == .note }.count
+        case .tasks: return base.filter { $0.noteType == .task }.count
+        case .events: return base.filter { $0.noteType == .event }.count
         }
     }
     
