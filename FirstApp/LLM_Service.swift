@@ -1,18 +1,37 @@
 //
-//  SecretsDecoder.swift
+//  LLM_Service.swift
 //  FirstApp
 //
 //  Created by Afonso on 02/11/2025.
 //
-// GeminiClient.swift
 
 import Foundation
-// Define a richer error type
-enum GeminiError: Error {
+
+// 🔥 Enhanced error type with user-friendly messages
+enum GeminiError: Error, LocalizedError {
     case decoding(Error)
     case badURL
     case badResponse
     case api(String)
+    case missingAPIKey  // 🔥 New: Instead of fatalError
+    case networkError(Error)
+    
+    var errorDescription: String? {
+        switch self {
+        case .decoding(let error):
+            return "Failed to parse response: \(error.localizedDescription)"
+        case .badURL:
+            return "Invalid API URL"
+        case .badResponse:
+            return "Empty or invalid response from AI"
+        case .api(let message):
+            return "API Error: \(message)"
+        case .missingAPIKey:
+            return "API Key is missing. Please add GEMINI_API_KEY to your configuration."
+        case .networkError(let error):
+            return "Network error: \(error.localizedDescription)"
+        }
+    }
 }
 
 struct GeminiResponsePart: Codable {
@@ -35,14 +54,15 @@ final class GeminiService {
     static let shared = GeminiService()
     private init() {}
     
-    // Model should be defined consistently, e.g., gemini-2.5-flash for both speed and capability.
     private let model = "gemini-2.5-flash"
     private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models"
     
-    // Assuming you read the key from your secure configuration (e.g., a process environment variable or xcconfig)
-    private var apiKey: String {
-        guard let key = Bundle.main.infoDictionary?["GEMINI_API_KEY"] as? String else {
-            fatalError("❌ Missing GEMINI_API_KEY in your configuration (e.g., Secrets.xcconfig).")
+    // 🔥 Changed from fatalError to throwing function
+    private func getAPIKey() throws -> String {
+        guard let key = Bundle.main.infoDictionary?["GEMINI_API_KEY"] as? String,
+              !key.isEmpty,
+              !key.contains("$(") else {  // Catch unresolved xcconfig variables
+            throw GeminiError.missingAPIKey
         }
         return key
     }
@@ -52,6 +72,9 @@ final class GeminiService {
         systemInstruction: String? = nil,
         responseMimeType: String? = nil
     ) async throws -> String {
+        
+        // 🔥 Get API key with proper error handling
+        let apiKey = try getAPIKey()
         
         let urlString = "\(baseURL)/\(model):generateContent"
         guard let url = URL(string: urlString) else { throw GeminiError.badURL }
@@ -79,11 +102,22 @@ final class GeminiService {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
         req.httpBody = data
+        req.timeoutInterval = 30  // 🔥 Add timeout
         
+        let responseData: Data
+        let response: URLResponse
         
-        let (responseData, response) = try await URLSession.shared.data(for: req)
+        do {
+            (responseData, response) = try await URLSession.shared.data(for: req)
+        } catch {
+            throw GeminiError.networkError(error)
+        }
 
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+            // Try to get error message from response
+            if let errorBody = String(data: responseData, encoding: .utf8) {
+                throw GeminiError.api("HTTP \(httpResponse.statusCode): \(errorBody)")
+            }
             throw GeminiError.api("HTTP \(httpResponse.statusCode)")
         }
         
@@ -93,9 +127,10 @@ final class GeminiService {
                 throw GeminiError.badResponse
             }
             return result
-        } catch let decodingError {
-            throw GeminiError.decoding(decodingError)
+        } catch let decodingError as GeminiError {
+            throw decodingError
+        } catch {
+            throw GeminiError.decoding(error)
         }
     }
-
 }
