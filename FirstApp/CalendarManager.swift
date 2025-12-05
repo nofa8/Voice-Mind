@@ -24,17 +24,38 @@ class CalendarManager: ObservableObject {
     }
     
     func requestAccess() async -> Bool {
-        do {
-            let granted = try await eventStore.requestFullAccessToEvents()
-            await MainActor.run {
-                authorizationStatus = EKEventStore.authorizationStatus(for: .event)
-            }
-            return granted
-        } catch {
-            await MainActor.run {
+        // iOS 17+ uses requestFullAccessToEvents()
+        if #available(iOS 17.0, *) {
+            do {
+                let granted = try await eventStore.requestFullAccessToEvents()
+                checkAuthorization()
+                return granted
+            } catch {
                 lastError = error.localizedDescription
+                return false
             }
-            return false
+        } else {
+            // Fallback for iOS 16 and earlier
+            return await withCheckedContinuation { continuation in
+                eventStore.requestAccess(to: .event) { granted, error in
+                    Task { @MainActor in
+                        if let error = error {
+                            self.lastError = error.localizedDescription
+                        }
+                        self.checkAuthorization()
+                        continuation.resume(returning: granted)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Check if authorized
+    private var isAuthorized: Bool {
+        if #available(iOS 17.0, *) {
+            return authorizationStatus == .fullAccess
+        } else {
+            return authorizationStatus == .authorized
         }
     }
     
@@ -49,11 +70,16 @@ class CalendarManager: ObservableObject {
     ) async -> Result<String, CalendarError> {
         
         // Check authorization first
-        guard authorizationStatus == .fullAccess || authorizationStatus == .authorized else {
+        if !isAuthorized {
             let granted = await requestAccess()
             if !granted {
                 return .failure(.accessDenied)
             }
+        }
+        
+        // Verify we have a default calendar
+        guard let calendar = eventStore.defaultCalendarForNewEvents else {
+            return .failure(.noDefaultCalendar)
         }
         
         let event = EKEvent(eventStore: eventStore)
@@ -62,7 +88,7 @@ class CalendarManager: ObservableObject {
         event.startDate = startDate
         event.endDate = endDate ?? startDate.addingTimeInterval(3600) // Default 1 hour
         event.location = location
-        event.calendar = eventStore.defaultCalendarForNewEvents
+        event.calendar = calendar
         
         // Add an alert 15 minutes before
         let alarm = EKAlarm(relativeOffset: -15 * 60)
