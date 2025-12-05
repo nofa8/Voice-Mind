@@ -12,12 +12,12 @@
 		D85CD5772EC7B8690008E8FC /* VoiceNoteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85CD5762EC7B8690008E8FC /* VoiceNoteDetailView.swift */; };
 		D87650122ECF3CB9006E69D6 /* AgendaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87650112ECF3CB9006E69D6 /* AgendaView.swift */; };
 		D87650142ECF3CD6006E69D6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87650132ECF3CD6006E69D6 /* Theme.swift */; };
+		D876501A2EE32C36006E69D6 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87650192EE32C36006E69D6 /* CalendarManager.swift */; };
 		D889E4112EB6C0AD00A8E910 /* VoiceNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4102EB6C0AD00A8E910 /* VoiceNote.swift */; };
 		D889E4132EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4122EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift */; };
 		D889E4152EB6C0EB00A8E910 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4142EB6C0EB00A8E910 /* MainView.swift */; };
 		D889E41B2EB8C8DD00A8E910 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */; };
 		D889E41E2EB8C8DD00A8E910 /* LLM_Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */; };
-		D889E4202EB9063E00A8E910 /* GeminiTranslationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E41F2EB9063E00A8E910 /* GeminiTranslationService.swift */; };
 		D889E4222EB9065B00A8E910 /* GeminiAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4212EB9065B00A8E910 /* GeminiAnalysisService.swift */; };
 		D8F74F862E8AC7F0001D31C7 /* VoiceMindApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F74F852E8AC7F0001D31C7 /* VoiceMindApp.swift */; };
 		D8F74F8A2E8AC7F1001D31C7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D8F74F892E8AC7F1001D31C7 /* Assets.xcassets */; };
@@ -50,13 +50,13 @@
 		D85CD5762EC7B8690008E8FC /* VoiceNoteDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNoteDetailView.swift; sourceTree = "<group>"; };
 		D87650112ECF3CB9006E69D6 /* AgendaView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AgendaView.swift; sourceTree = "<group>"; };
 		D87650132ECF3CD6006E69D6 /* Theme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		D87650192EE32C36006E69D6 /* CalendarManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
 		D889E4102EB6C0AD00A8E910 /* VoiceNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNote.swift; sourceTree = "<group>"; };
 		D889E4122EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderViewModel.swift; sourceTree = "<group>"; };
 		D889E4142EB6C0EB00A8E910 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		D889E41C2EB8C8DD00A8E910 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLM_Service.swift; sourceTree = "<group>"; };
-		D889E41F2EB9063E00A8E910 /* GeminiTranslationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiTranslationService.swift; sourceTree = "<group>"; };
 		D889E4212EB9065B00A8E910 /* GeminiAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiAnalysisService.swift; sourceTree = "<group>"; };
 		D8F74F822E8AC7F0001D31C7 /* FirstApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FirstApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D8F74F852E8AC7F0001D31C7 /* VoiceMindApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMindApp.swift; sourceTree = "<group>"; };
@@ -144,6 +144,7 @@
 		D8F74F842E8AC7F0001D31C7 /* FirstApp */ = {
 			isa = PBXGroup;
 			children = (
+				D87650192EE32C36006E69D6 /* CalendarManager.swift */,
 				D87650132ECF3CD6006E69D6 /* Theme.swift */,
 				D889E41C2EB8C8DD00A8E910 /* Info.plist */,
 				D889E40F2EB6BFA000A8E910 /* Views */,
@@ -154,7 +155,6 @@
 				D8F74F892E8AC7F1001D31C7 /* Assets.xcassets */,
 				D8F74F8B2E8AC7F1001D31C7 /* Preview Content */,
 				D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */,
-				D889E41F2EB9063E00A8E910 /* GeminiTranslationService.swift */,
 				D889E4212EB9065B00A8E910 /* GeminiAnalysisService.swift */,
 				D85CD5742EC7B8400008E8FC /* NoteRow.swift */,
 			);
@@ -320,7 +320,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				D889E4112EB6C0AD00A8E910 /* VoiceNote.swift in Sources */,
-				D889E4202EB9063E00A8E910 /* GeminiTranslationService.swift in Sources */,
 				D85CD5732EC7B80D0008E8FC /* VoiceNotesListView.swift in Sources */,
 				D8F74F862E8AC7F0001D31C7 /* VoiceMindApp.swift in Sources */,
 				D889E41E2EB8C8DD00A8E910 /* LLM_Service.swift in Sources */,
@@ -329,6 +328,7 @@
 				D889E4222EB9065B00A8E910 /* GeminiAnalysisService.swift in Sources */,
 				D889E4132EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift in Sources */,
 				D87650142ECF3CD6006E69D6 /* Theme.swift in Sources */,
+				D876501A2EE32C36006E69D6 /* CalendarManager.swift in Sources */,
 				D87650122ECF3CB9006E69D6 /* AgendaView.swift in Sources */,
 				D85CD5772EC7B8690008E8FC /* VoiceNoteDetailView.swift in Sources */,
 			);
@@ -500,6 +500,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FirstApp/Info.plist;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Voice Mind needs access to your calendar to schedule events.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Voice mind needs access to your microphone to record audio notes.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Voice Mind needs access to speech recognition to transcribe your voice notes!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -532,6 +533,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FirstApp/Info.plist;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Voice Mind needs access to your calendar to schedule events.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Voice mind needs access to your microphone to record audio notes.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Voice Mind needs access to speech recognition to transcribe your voice notes!";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
