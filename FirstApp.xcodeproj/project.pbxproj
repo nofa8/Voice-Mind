@@ -13,6 +13,7 @@
 		D87650122ECF3CB9006E69D6 /* AgendaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87650112ECF3CB9006E69D6 /* AgendaView.swift */; };
 		D87650142ECF3CD6006E69D6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87650132ECF3CD6006E69D6 /* Theme.swift */; };
 		D876501A2EE32C36006E69D6 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D87650192EE32C36006E69D6 /* CalendarManager.swift */; };
+		D876501E2EE351DE006E69D6 /* FilterSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D876501D2EE351DE006E69D6 /* FilterSheetView.swift */; };
 		D889E4112EB6C0AD00A8E910 /* VoiceNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4102EB6C0AD00A8E910 /* VoiceNote.swift */; };
 		D889E4132EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4122EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift */; };
 		D889E4152EB6C0EB00A8E910 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4142EB6C0EB00A8E910 /* MainView.swift */; };
@@ -51,6 +52,7 @@
 		D87650112ECF3CB9006E69D6 /* AgendaView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AgendaView.swift; sourceTree = "<group>"; };
 		D87650132ECF3CD6006E69D6 /* Theme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		D87650192EE32C36006E69D6 /* CalendarManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
+		D876501D2EE351DE006E69D6 /* FilterSheetView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FilterSheetView.swift; sourceTree = "<group>"; };
 		D889E4102EB6C0AD00A8E910 /* VoiceNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNote.swift; sourceTree = "<group>"; };
 		D889E4122EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderViewModel.swift; sourceTree = "<group>"; };
 		D889E4142EB6C0EB00A8E910 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
@@ -113,6 +115,7 @@
 		D889E40F2EB6BFA000A8E910 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				D876501D2EE351DE006E69D6 /* FilterSheetView.swift */,
 				D87650112ECF3CB9006E69D6 /* AgendaView.swift */,
 				D85CD5722EC7B80D0008E8FC /* VoiceNotesListView.swift */,
 				D85CD5762EC7B8690008E8FC /* VoiceNoteDetailView.swift */,
@@ -319,6 +322,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D876501E2EE351DE006E69D6 /* FilterSheetView.swift in Sources */,
 				D889E4112EB6C0AD00A8E910 /* VoiceNote.swift in Sources */,
 				D85CD5732EC7B80D0008E8FC /* VoiceNotesListView.swift in Sources */,
 				D8F74F862E8AC7F0001D31C7 /* VoiceMindApp.swift in Sources */,
