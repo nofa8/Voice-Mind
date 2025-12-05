@@ -169,15 +169,41 @@ class VoiceRecorderViewModel: ObservableObject {
             let detectedLang = try await detectLanguage(text)
             let analysis = try await GeminiAnalysisService.shared.analyze(text)
             
+            // 🔥 Robust date parsing - try multiple formats
             var extractedDate: Date? = nil
             if let dateString = analysis.extractedDate {
                 let formatter = ISO8601DateFormatter()
-                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds] 
-                extractedDate = formatter.date(from: dateString)
                 
+                // Try formats in order of specificity
+                let formatOptions: [ISO8601DateFormatter.Options] = [
+                    [.withInternetDateTime, .withFractionalSeconds],
+                    [.withInternetDateTime],
+                    [.withFullDate, .withTime, .withColonSeparatorInTime],
+                    [.withFullDate, .withTime, .withColonSeparatorInTime, .withTimeZone],
+                    [.withFullDate]
+                ]
+                
+                for options in formatOptions {
+                    formatter.formatOptions = options
+                    if let date = formatter.date(from: dateString) {
+                        extractedDate = date
+                        print("✅ Parsed date: \(date) from: \(dateString)")
+                        break
+                    }
+                }
+                
+                // Fallback: try DateFormatter for non-ISO formats
                 if extractedDate == nil {
-                    formatter.formatOptions = [.withInternetDateTime]
-                    extractedDate = formatter.date(from: dateString)
+                    let fallbackFormatter = DateFormatter()
+                    fallbackFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+                    fallbackFormatter.timeZone = TimeZone.current
+                    extractedDate = fallbackFormatter.date(from: dateString)
+                    
+                    if extractedDate != nil {
+                        print("✅ Parsed date (fallback): \(extractedDate!) from: \(dateString)")
+                    } else {
+                        print("⚠️ Failed to parse date: \(dateString)")
+                    }
                 }
             }
             
