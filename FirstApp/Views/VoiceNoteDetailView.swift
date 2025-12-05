@@ -1,17 +1,97 @@
 import SwiftUI
+import AVFoundation
 
+// MARK: - Audio Player Manager
+class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
+    @Published var isPlaying = false
+    @Published var progress: Double = 0
+    @Published var duration: TimeInterval = 0
+    
+    private var player: AVAudioPlayer?
+    private var timer: Timer?
+    
+    func loadAudio(from url: URL) {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try AVAudioSession.sharedInstance().setActive(true)
+            
+            player = try AVAudioPlayer(contentsOf: url)
+            player?.delegate = self
+            player?.prepareToPlay()
+            duration = player?.duration ?? 0
+        } catch {
+            print("❌ Audio load error: \(error)")
+        }
+    }
+    
+    func togglePlayback() {
+        guard let player = player else { return }
+        
+        if isPlaying {
+            player.pause()
+            stopTimer()
+        } else {
+            player.play()
+            startTimer()
+        }
+        isPlaying.toggle()
+    }
+    
+    func seek(to time: Double) {
+        player?.currentTime = time
+        progress = time
+    }
+    
+    private func startTimer() {
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self = self, let player = self.player else { return }
+            self.progress = player.currentTime
+        }
+    }
+    
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
+    
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        isPlaying = false
+        progress = 0
+        stopTimer()
+    }
+    
+    func cleanup() {
+        player?.stop()
+        stopTimer()
+        isPlaying = false
+        progress = 0
+    }
+}
+
+// MARK: - Main View
 struct VoiceNoteDetailView: View {
     @Environment(\.modelContext) private var context
     @State var note: VoiceNote
+    @StateObject private var audioPlayer = AudioPlayerManager()
+    
+    // 🔥 Calendar state
+    @State private var showingCalendarAlert = false
+    @State private var calendarAlertMessage = ""
+    @State private var isAddingToCalendar = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 
-                // 🔥 Type Badge
+                // Type Badge
                 typeBadge
                 
-                // 🔥 Type-Specific Sections
+                // Audio Player (if audio exists)
+                if note.audioURL != nil {
+                    audioPlayerSection
+                }
+                
+                // Type-Specific Sections
                 switch note.noteType {
                 case .task:
                     taskSpecificSection
@@ -44,6 +124,73 @@ struct VoiceNoteDetailView: View {
         }
         .navigationTitle("Details")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if let url = note.audioURL {
+                audioPlayer.loadAudio(from: url)
+            }
+        }
+        .onDisappear {
+            audioPlayer.cleanup()
+        }
+        .alert("Calendar", isPresented: $showingCalendarAlert) {
+            Button("OK") { }
+        } message: {
+            Text(calendarAlertMessage)
+        }
+    }
+    
+    // MARK: - Audio Player Section
+    private var audioPlayerSection: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: "waveform")
+                    .foregroundStyle(Theme.primary)
+                Text("Original Recording")
+                    .font(.headline)
+                Spacer()
+            }
+            
+            HStack(spacing: 16) {
+                Button(action: { audioPlayer.togglePlayback() }) {
+                    Image(systemName: audioPlayer.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 44))
+                        .foregroundStyle(Theme.primary)
+                }
+                .buttonStyle(.plain)
+                
+                VStack(spacing: 4) {
+                    Slider(
+                        value: $audioPlayer.progress,
+                        in: 0...max(audioPlayer.duration, 1),
+                        onEditingChanged: { editing in
+                            if !editing {
+                                audioPlayer.seek(to: audioPlayer.progress)
+                            }
+                        }
+                    )
+                    .tint(Theme.primary)
+                    
+                    HStack {
+                        Text(formatTime(audioPlayer.progress))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(formatTime(audioPlayer.duration))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Theme.primary.opacity(0.05))
+        .cornerRadius(Theme.cornerRadius)
+    }
+    
+    private func formatTime(_ time: TimeInterval) -> String {
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
     
     // MARK: - Type Badge
@@ -60,7 +207,6 @@ struct VoiceNoteDetailView: View {
             
             Spacer()
             
-            // Priority badge
             if let priority = note.priority, !priority.isEmpty {
                 priorityBadge(priority)
             }
@@ -100,7 +246,6 @@ struct VoiceNoteDetailView: View {
     // MARK: - Task-Specific Section
     private var taskSpecificSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Completion toggle
             Button(action: toggleCompletion) {
                 HStack {
                     Image(systemName: note.isCompleted ? "checkmark.circle.fill" : "circle")
@@ -114,7 +259,6 @@ struct VoiceNoteDetailView: View {
             }
             .buttonStyle(.plain)
             
-            // Action items
             if let actionItems = note.actionItems, !actionItems.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Action Items")
@@ -139,7 +283,6 @@ struct VoiceNoteDetailView: View {
     // MARK: - Event-Specific Section
     private var eventSpecificSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Date & Time
             if let eventDate = note.eventDate {
                 HStack {
                     Image(systemName: "calendar.badge.clock")
@@ -153,18 +296,31 @@ struct VoiceNoteDetailView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                         
-                        // Countdown or past indicator
                         Text(timeUntil(eventDate))
                             .font(.caption)
                             .foregroundStyle(eventDate > Date() ? .blue : .gray)
                     }
+                    
+                    Spacer()
+                    
+                    // 🔥 Add to Calendar button
+                    Button(action: addToCalendar) {
+                        VStack(spacing: 4) {
+                            Image(systemName: isAddingToCalendar ? "hourglass" : "calendar.badge.plus")
+                                .font(.title2)
+                            Text("Add")
+                                .font(.caption2)
+                        }
+                        .foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isAddingToCalendar)
                 }
                 .padding()
                 .background(Color.blue.opacity(0.05))
                 .cornerRadius(Theme.cornerRadius)
             }
             
-            // Location
             if let location = note.eventLocation, !location.isEmpty {
                 HStack {
                     Image(systemName: "location.fill")
@@ -181,6 +337,35 @@ struct VoiceNoteDetailView: View {
                 .padding()
                 .background(Color.red.opacity(0.05))
                 .cornerRadius(Theme.cornerRadius)
+            }
+        }
+    }
+    
+    // 🔥 Add to Calendar action
+    private func addToCalendar() {
+        guard let eventDate = note.eventDate else { return }
+        
+        isAddingToCalendar = true
+        
+        Task {
+            let title = note.summary ?? "Voice Mind Event"
+            let result = await CalendarManager.shared.addEvent(
+                title: title,
+                notes: note.transcript,
+                startDate: eventDate,
+                location: note.eventLocation
+            )
+            
+            await MainActor.run {
+                isAddingToCalendar = false
+                
+                switch result {
+                case .success:
+                    calendarAlertMessage = "Event added to your calendar!"
+                case .failure(let error):
+                    calendarAlertMessage = error.localizedDescription
+                }
+                showingCalendarAlert = true
             }
         }
     }
@@ -250,6 +435,9 @@ struct VoiceNoteDetailView: View {
     
     private var deleteButton: some View {
         Button(role: .destructive) {
+            if let path = note.audioFilePath {
+                try? FileManager.default.removeItem(atPath: path)
+            }
             context.delete(note)
             try? context.save()
         } label: {

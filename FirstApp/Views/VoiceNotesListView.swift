@@ -27,6 +27,7 @@ struct VoiceNotesListView: View {
     
     @State private var isShowingRecorder = false
     @State private var selectedFilter: NoteFilter = .all
+    @State private var searchText = ""  // 🔥 Search state
 
     var body: some View {
         NavigationStack {
@@ -34,7 +35,7 @@ struct VoiceNotesListView: View {
                 Theme.background.ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // 🔥 Simplified Filter - Just icons with counts
+                    // Filter buttons
                     HStack(spacing: 16) {
                         ForEach(NoteFilter.allCases) { filter in
                             FilterButton(
@@ -49,7 +50,7 @@ struct VoiceNotesListView: View {
                     .padding()
                     .background(Theme.cardBackground)
                     
-                    if filteredNotes.isEmpty {
+                    if displayedNotes.isEmpty {
                         ContentUnavailableView(
                             emptyStateTitle,
                             systemImage: emptyStateIcon,
@@ -58,7 +59,7 @@ struct VoiceNotesListView: View {
                     } else {
                         ScrollView {
                             LazyVStack(spacing: 12) {
-                                ForEach(filteredNotes) { note in
+                                ForEach(displayedNotes) { note in
                                     NavigationLink(value: note) {
                                         NoteRow(note: note)
                                     }
@@ -71,6 +72,7 @@ struct VoiceNotesListView: View {
                 }
             }
             .navigationTitle("Library")
+            .searchable(text: $searchText, prompt: "Search notes...")  // 🔥 Search bar
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { isShowingRecorder = true }) {
@@ -89,13 +91,44 @@ struct VoiceNotesListView: View {
         }
     }
     
-    // MARK: - Filtering Logic
+    // MARK: - Search + Filter Logic
+    
+    // First apply type filter
     private var filteredNotes: [VoiceNote] {
         switch selectedFilter {
         case .all: return notes
         case .notes: return notes.filter { $0.noteType == .note }
         case .tasks: return notes.filter { $0.noteType == .task }
         case .events: return notes.filter { $0.noteType == .event }
+        }
+    }
+    
+    // Then apply search on top of filter
+    private var displayedNotes: [VoiceNote] {
+        guard !searchText.isEmpty else { return filteredNotes }
+        
+        let query = searchText.lowercased()
+        return filteredNotes.filter { note in
+            // Search in transcript
+            if note.transcript.lowercased().contains(query) { return true }
+            
+            // Search in summary
+            if let summary = note.summary, summary.lowercased().contains(query) { return true }
+            
+            // Search in keywords
+            if let keywords = note.keywords {
+                for keyword in keywords {
+                    if keyword.lowercased().contains(query) { return true }
+                }
+            }
+            
+            // Search in location
+            if let location = note.eventLocation, location.lowercased().contains(query) { return true }
+            
+            // Search in category
+            if let category = note.category, category.lowercased().contains(query) { return true }
+            
+            return false
         }
     }
     
@@ -110,6 +143,9 @@ struct VoiceNotesListView: View {
     
     // MARK: - Empty State
     private var emptyStateTitle: String {
+        if !searchText.isEmpty {
+            return "No Results"
+        }
         switch selectedFilter {
         case .all: return "No Items"
         case .notes: return "No Notes"
@@ -119,6 +155,9 @@ struct VoiceNotesListView: View {
     }
     
     private var emptyStateIcon: String {
+        if !searchText.isEmpty {
+            return "magnifyingglass"
+        }
         switch selectedFilter {
         case .all: return "tray"
         case .notes: return "doc.text"
@@ -128,6 +167,9 @@ struct VoiceNotesListView: View {
     }
     
     private var emptyStateDescription: String {
+        if !searchText.isEmpty {
+            return "No items match '\(searchText)'"
+        }
         switch selectedFilter {
         case .all: return "Tap + to record your first item."
         case .notes: return "No notes yet."

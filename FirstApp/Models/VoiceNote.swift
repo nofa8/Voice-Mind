@@ -9,6 +9,9 @@ final class VoiceNote {
     // Raw user speech
     var transcript: String
     
+    // 🔥 Audio file path for playback
+    var audioFilePath: String?
+    
     // AI Analysis
     var summary: String?
     var sentiment: String?
@@ -26,6 +29,11 @@ final class VoiceNote {
     // Metadata
     var detectedLanguage: String? 
     
+    // Computed property for audio URL
+    var audioURL: URL? {
+        guard let path = audioFilePath else { return nil }
+        return URL(fileURLWithPath: path)
+    }
     
     init(
         transcript: String,
@@ -39,7 +47,8 @@ final class VoiceNote {
         eventLocation: String? = nil,
         detectedLanguage: String? = nil,
         createdAt: Date = Date(),
-        noteType: NoteType = .note
+        noteType: NoteType = .note,
+        audioFilePath: String? = nil
     ) {
         self.id = UUID()
         self.createdAt = createdAt
@@ -58,6 +67,7 @@ final class VoiceNote {
         
         self.isCompleted = false
         self.detectedLanguage = detectedLanguage
+        self.audioFilePath = audioFilePath
     }
 }
 
