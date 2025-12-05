@@ -2,7 +2,7 @@
 import SwiftUI
 import SwiftData
 
-// Simplified filter options
+// Type filter options
 enum NoteFilter: String, CaseIterable, Identifiable {
     case all = "All"
     case notes = "Notes"
@@ -27,7 +27,11 @@ struct VoiceNotesListView: View {
     
     @State private var isShowingRecorder = false
     @State private var selectedFilter: NoteFilter = .all
-    @State private var searchText = ""  // 🔥 Search state
+    @State private var searchText = ""
+    
+    // 🔥 Advanced filters
+    @State private var showFilterSheet = false
+    @StateObject private var filterState = FilterState()
 
     var body: some View {
         NavigationStack {
@@ -35,7 +39,7 @@ struct VoiceNotesListView: View {
                 Theme.background.ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Filter buttons
+                    // Type filter buttons
                     HStack(spacing: 16) {
                         ForEach(NoteFilter.allCases) { filter in
                             FilterButton(
@@ -49,6 +53,11 @@ struct VoiceNotesListView: View {
                     }
                     .padding()
                     .background(Theme.cardBackground)
+                    
+                    // 🔥 Active filters indicator
+                    if filterState.hasActiveFilters {
+                        activeFiltersBar
+                    }
                     
                     if displayedNotes.isEmpty {
                         ContentUnavailableView(
@@ -72,8 +81,30 @@ struct VoiceNotesListView: View {
                 }
             }
             .navigationTitle("Library")
-            .searchable(text: $searchText, prompt: "Search notes...")  // 🔥 Search bar
+            .searchable(text: $searchText, prompt: "Search notes...")
             .toolbar {
+                // 🔥 Filter button
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { showFilterSheet = true }) {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                                .font(.system(size: 22))
+                                .foregroundStyle(filterState.hasActiveFilters ? Theme.primary : .gray)
+                            
+                            if filterState.activeFilterCount > 0 {
+                                Text("\(filterState.activeFilterCount)")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(.white)
+                                    .frame(width: 16, height: 16)
+                                    .background(Theme.primary)
+                                    .clipShape(Circle())
+                                    .offset(x: 8, y: -4)
+                            }
+                        }
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { isShowingRecorder = true }) {
                         Image(systemName: "plus.circle.fill")
@@ -88,13 +119,54 @@ struct VoiceNotesListView: View {
             .sheet(isPresented: $isShowingRecorder) {
                 MainView().modelContext(context)
             }
+            .sheet(isPresented: $showFilterSheet) {
+                FilterSheetView(
+                    filterState: filterState,
+                    availableKeywords: allKeywords
+                )
+                .presentationDetents([.medium, .large])
+            }
         }
     }
     
-    // MARK: - Search + Filter Logic
+    // 🔥 Active filters indicator bar
+    private var activeFiltersBar: some View {
+        HStack {
+            Image(systemName: "line.3.horizontal.decrease")
+                .foregroundStyle(Theme.primary)
+            
+            Text("\(filterState.activeFilterCount) filter\(filterState.activeFilterCount == 1 ? "" : "s") active")
+                .font(.caption)
+                .foregroundStyle(Theme.primary)
+            
+            Spacer()
+            
+            Button("Clear") {
+                filterState.clearAll()
+            }
+            .font(.caption)
+            .foregroundStyle(.red)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Theme.primary.opacity(0.1))
+    }
     
-    // First apply type filter
-    private var filteredNotes: [VoiceNote] {
+    // MARK: - Available Keywords (from all notes)
+    private var allKeywords: [String] {
+        var keywords = Set<String>()
+        for note in notes {
+            if let noteKeywords = note.keywords {
+                keywords.formUnion(noteKeywords)
+            }
+        }
+        return Array(keywords).sorted()
+    }
+    
+    // MARK: - Filter Logic (Chained)
+    
+    // Step 1: Type filter
+    private var typeFilteredNotes: [VoiceNote] {
         switch selectedFilter {
         case .all: return notes
         case .notes: return notes.filter { $0.noteType == .note }
@@ -103,31 +175,89 @@ struct VoiceNotesListView: View {
         }
     }
     
-    // Then apply search on top of filter
+    // Step 2: Apply advanced filters
+    private var advancedFilteredNotes: [VoiceNote] {
+        var result = typeFilteredNotes
+        
+        // Date filter
+        if filterState.dateFilter != .all {
+            let calendar = Calendar.current
+            let now = Date()
+            
+            result = result.filter { note in
+                switch filterState.dateFilter {
+                case .today:
+                    return calendar.isDateInToday(note.createdAt)
+                case .thisWeek:
+                    return calendar.isDate(note.createdAt, equalTo: now, toGranularity: .weekOfYear)
+                case .thisMonth:
+                    return calendar.isDate(note.createdAt, equalTo: now, toGranularity: .month)
+                case .all:
+                    return true
+                }
+            }
+        }
+        
+        // Category filter
+        if !filterState.selectedCategories.isEmpty {
+            result = result.filter { note in
+                guard let category = note.category else { return false }
+                return filterState.selectedCategories.contains(category)
+            }
+        }
+        
+        // Priority filter
+        if !filterState.selectedPriorities.isEmpty {
+            result = result.filter { note in
+                guard let priority = note.priority else { return false }
+                return filterState.selectedPriorities.contains(priority)
+            }
+        }
+        
+        // Sentiment filter
+        if let sentiment = filterState.selectedSentiment {
+            result = result.filter { note in
+                guard let noteSentiment = note.sentiment else { return false }
+                return noteSentiment.lowercased() == sentiment.lowercased()
+            }
+        }
+        
+        // Keywords filter
+        if !filterState.selectedKeywords.isEmpty {
+            result = result.filter { note in
+                guard let noteKeywords = note.keywords else { return false }
+                return !filterState.selectedKeywords.isDisjoint(with: Set(noteKeywords))
+            }
+        }
+        
+        // Show/hide completed
+        if !filterState.showCompletedTasks {
+            result = result.filter { !$0.isCompleted }
+        }
+        
+        // Only with audio
+        if filterState.onlyWithAudio {
+            result = result.filter { $0.audioFilePath != nil }
+        }
+        
+        return result
+    }
+    
+    // Step 3: Apply search
     private var displayedNotes: [VoiceNote] {
-        guard !searchText.isEmpty else { return filteredNotes }
+        guard !searchText.isEmpty else { return advancedFilteredNotes }
         
         let query = searchText.lowercased()
-        return filteredNotes.filter { note in
-            // Search in transcript
+        return advancedFilteredNotes.filter { note in
             if note.transcript.lowercased().contains(query) { return true }
-            
-            // Search in summary
             if let summary = note.summary, summary.lowercased().contains(query) { return true }
-            
-            // Search in keywords
             if let keywords = note.keywords {
                 for keyword in keywords {
                     if keyword.lowercased().contains(query) { return true }
                 }
             }
-            
-            // Search in location
             if let location = note.eventLocation, location.lowercased().contains(query) { return true }
-            
-            // Search in category
             if let category = note.category, category.lowercased().contains(query) { return true }
-            
             return false
         }
     }
@@ -146,6 +276,9 @@ struct VoiceNotesListView: View {
         if !searchText.isEmpty {
             return "No Results"
         }
+        if filterState.hasActiveFilters {
+            return "No Matches"
+        }
         switch selectedFilter {
         case .all: return "No Items"
         case .notes: return "No Notes"
@@ -155,7 +288,7 @@ struct VoiceNotesListView: View {
     }
     
     private var emptyStateIcon: String {
-        if !searchText.isEmpty {
+        if !searchText.isEmpty || filterState.hasActiveFilters {
             return "magnifyingglass"
         }
         switch selectedFilter {
@@ -169,6 +302,9 @@ struct VoiceNotesListView: View {
     private var emptyStateDescription: String {
         if !searchText.isEmpty {
             return "No items match '\(searchText)'"
+        }
+        if filterState.hasActiveFilters {
+            return "Try adjusting your filters"
         }
         switch selectedFilter {
         case .all: return "Tap + to record your first item."
