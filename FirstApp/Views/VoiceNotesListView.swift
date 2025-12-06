@@ -23,15 +23,25 @@ enum NoteFilter: String, CaseIterable, Identifiable {
 
 struct VoiceNotesListView: View {
     @Environment(\.modelContext) private var context
-    @Query(sort: \VoiceNote.createdAt, order: .reverse) private var notes: [VoiceNote]
+    
+    // 🔥 Sort by isPinned first, then by date
+    @Query(sort: [
+        SortDescriptor(\VoiceNote.isPinned, order: .reverse),
+        SortDescriptor(\VoiceNote.createdAt, order: .reverse)
+    ]) private var notes: [VoiceNote]
     
     @State private var isShowingRecorder = false
     @State private var selectedFilter: NoteFilter = .all
     @State private var searchText = ""
     
-    // 🔥 Advanced filters
+    // Advanced filters
     @State private var showFilterSheet = false
     @StateObject private var filterState = FilterState()
+    
+    // 🔥 Toast state
+    @State private var showToast = false
+    @State private var toastMessage = ""
+    @State private var toastType: ToastType = .success
 
     var body: some View {
         NavigationStack {
@@ -54,7 +64,7 @@ struct VoiceNotesListView: View {
                     .padding()
                     .background(Theme.cardBackground)
                     
-                    // 🔥 Active filters indicator
+                    // Active filters indicator
                     if filterState.hasActiveFilters {
                         activeFiltersBar
                     }
@@ -73,6 +83,10 @@ struct VoiceNotesListView: View {
                                         NoteRow(note: note)
                                     }
                                     .buttonStyle(PlainButtonStyle())
+                                    // 🔥 Context Menu
+                                    .contextMenu {
+                                        contextMenuItems(for: note)
+                                    }
                                 }
                             }
                             .padding()
@@ -82,8 +96,25 @@ struct VoiceNotesListView: View {
             }
             .navigationTitle("Library")
             .searchable(text: $searchText, prompt: "Search notes...")
+            // 🔥 Smart Search Suggestions
+            .searchSuggestions {
+                if searchText.isEmpty {
+                    Section("Keywords") {
+                        ForEach(allKeywords.prefix(5), id: \.self) { keyword in
+                            Label("#\(keyword)", systemImage: "tag")
+                                .searchCompletion(keyword)
+                        }
+                    }
+                    
+                    Section("Categories") {
+                        ForEach(["Work", "Personal", "Health"], id: \.self) { category in
+                            Label(category, systemImage: "folder")
+                                .searchCompletion(category)
+                        }
+                    }
+                }
+            }
             .toolbar {
-                // 🔥 Filter button
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { showFilterSheet = true }) {
                         ZStack(alignment: .topTrailing) {
@@ -127,9 +158,95 @@ struct VoiceNotesListView: View {
                 .presentationDetents([.medium, .large])
             }
         }
+        .toast(isPresented: $showToast, message: toastMessage, type: toastType)
     }
     
-    // 🔥 Active filters indicator bar
+    // MARK: - Context Menu
+    @ViewBuilder
+    private func contextMenuItems(for note: VoiceNote) -> some View {
+        // Share
+        ShareLink(item: note.transcript) {
+            Label("Share Transcript", systemImage: "square.and.arrow.up")
+        }
+        
+        // Pin/Unpin
+        Button {
+            note.isPinned.toggle()
+            try? context.save()
+            showToastMessage(note.isPinned ? "Pinned" : "Unpinned", type: .success)
+        } label: {
+            Label(note.isPinned ? "Unpin" : "Pin to Top", systemImage: note.isPinned ? "pin.slash" : "pin")
+        }
+        
+        // Add to Calendar (events only)
+        if note.noteType == .event, note.eventDate != nil {
+            Button {
+                addToCalendar(note)
+            } label: {
+                Label("Add to Calendar", systemImage: "calendar.badge.plus")
+            }
+        }
+        
+        // Toggle Complete (tasks only)
+        if note.noteType == .task {
+            Button {
+                note.isCompleted.toggle()
+                try? context.save()
+                showToastMessage(note.isCompleted ? "Completed" : "Marked incomplete", type: .success)
+            } label: {
+                Label(note.isCompleted ? "Mark Incomplete" : "Mark Complete", 
+                      systemImage: note.isCompleted ? "circle" : "checkmark.circle")
+            }
+        }
+        
+        Divider()
+        
+        // Delete
+        Button(role: .destructive) {
+            if let path = note.audioFilePath {
+                try? FileManager.default.removeItem(atPath: path)
+            }
+            context.delete(note)
+            try? context.save()
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func addToCalendar(_ note: VoiceNote) {
+        guard let eventDate = note.eventDate else { return }
+        
+        Task {
+            let title = note.summary ?? "Voice Mind Event"
+            let result = await CalendarManager.shared.addEvent(
+                title: title,
+                notes: note.transcript,
+                startDate: eventDate,
+                location: note.eventLocation
+            )
+            
+            await MainActor.run {
+                switch result {
+                case .success:
+                    showToastMessage("Added to Calendar", type: .success)
+                case .failure(let error):
+                    showToastMessage(error.localizedDescription, type: .error)
+                }
+            }
+        }
+    }
+    
+    private func showToastMessage(_ message: String, type: ToastType) {
+        toastMessage = message
+        toastType = type
+        withAnimation {
+            showToast = true
+        }
+    }
+    
+    // Active filters bar
     private var activeFiltersBar: some View {
         HStack {
             Image(systemName: "line.3.horizontal.decrease")
@@ -152,7 +269,7 @@ struct VoiceNotesListView: View {
         .background(Theme.primary.opacity(0.1))
     }
     
-    // MARK: - Available Keywords (from all notes)
+    // Available Keywords
     private var allKeywords: [String] {
         var keywords = Set<String>()
         for note in notes {
@@ -163,9 +280,8 @@ struct VoiceNotesListView: View {
         return Array(keywords).sorted()
     }
     
-    // MARK: - Filter Logic (Chained)
+    // MARK: - Filter Logic
     
-    // Step 1: Type filter
     private var typeFilteredNotes: [VoiceNote] {
         switch selectedFilter {
         case .all: return notes
@@ -175,30 +291,23 @@ struct VoiceNotesListView: View {
         }
     }
     
-    // Step 2: Apply advanced filters
     private var advancedFilteredNotes: [VoiceNote] {
         var result = typeFilteredNotes
         
-        // Date filter
         if filterState.dateFilter != .all {
             let calendar = Calendar.current
             let now = Date()
             
             result = result.filter { note in
                 switch filterState.dateFilter {
-                case .today:
-                    return calendar.isDateInToday(note.createdAt)
-                case .thisWeek:
-                    return calendar.isDate(note.createdAt, equalTo: now, toGranularity: .weekOfYear)
-                case .thisMonth:
-                    return calendar.isDate(note.createdAt, equalTo: now, toGranularity: .month)
-                case .all:
-                    return true
+                case .today: return calendar.isDateInToday(note.createdAt)
+                case .thisWeek: return calendar.isDate(note.createdAt, equalTo: now, toGranularity: .weekOfYear)
+                case .thisMonth: return calendar.isDate(note.createdAt, equalTo: now, toGranularity: .month)
+                case .all: return true
                 }
             }
         }
         
-        // Category filter
         if !filterState.selectedCategories.isEmpty {
             result = result.filter { note in
                 guard let category = note.category else { return false }
@@ -206,7 +315,6 @@ struct VoiceNotesListView: View {
             }
         }
         
-        // Priority filter
         if !filterState.selectedPriorities.isEmpty {
             result = result.filter { note in
                 guard let priority = note.priority else { return false }
@@ -214,7 +322,6 @@ struct VoiceNotesListView: View {
             }
         }
         
-        // Sentiment filter
         if let sentiment = filterState.selectedSentiment {
             result = result.filter { note in
                 guard let noteSentiment = note.sentiment else { return false }
@@ -222,7 +329,6 @@ struct VoiceNotesListView: View {
             }
         }
         
-        // Keywords filter
         if !filterState.selectedKeywords.isEmpty {
             result = result.filter { note in
                 guard let noteKeywords = note.keywords else { return false }
@@ -230,12 +336,10 @@ struct VoiceNotesListView: View {
             }
         }
         
-        // Show/hide completed
         if !filterState.showCompletedTasks {
             result = result.filter { !$0.isCompleted }
         }
         
-        // Only with audio
         if filterState.onlyWithAudio {
             result = result.filter { $0.audioFilePath != nil }
         }
@@ -243,7 +347,6 @@ struct VoiceNotesListView: View {
         return result
     }
     
-    // Step 3: Apply search
     private var displayedNotes: [VoiceNote] {
         guard !searchText.isEmpty else { return advancedFilteredNotes }
         
@@ -262,12 +365,10 @@ struct VoiceNotesListView: View {
         }
     }
     
-    // 🔥 Dynamic counts based on advanced filters
+    // Dynamic counts based on advanced filters
     private func filterCount(for filter: NoteFilter) -> Int {
-        // Apply advanced filters first (without type filter)
         var base = notes
         
-        // Date filter
         if filterState.dateFilter != .all {
             let calendar = Calendar.current
             let now = Date()
@@ -281,7 +382,6 @@ struct VoiceNotesListView: View {
             }
         }
         
-        // Category filter
         if !filterState.selectedCategories.isEmpty {
             base = base.filter { note in
                 guard let category = note.category else { return false }
@@ -289,7 +389,6 @@ struct VoiceNotesListView: View {
             }
         }
         
-        // Priority filter
         if !filterState.selectedPriorities.isEmpty {
             base = base.filter { note in
                 guard let priority = note.priority else { return false }
@@ -297,7 +396,6 @@ struct VoiceNotesListView: View {
             }
         }
         
-        // Sentiment filter
         if let sentiment = filterState.selectedSentiment {
             base = base.filter { note in
                 guard let noteSentiment = note.sentiment else { return false }
@@ -305,7 +403,6 @@ struct VoiceNotesListView: View {
             }
         }
         
-        // Keywords filter
         if !filterState.selectedKeywords.isEmpty {
             base = base.filter { note in
                 guard let noteKeywords = note.keywords else { return false }
@@ -313,17 +410,14 @@ struct VoiceNotesListView: View {
             }
         }
         
-        // Show/hide completed
         if !filterState.showCompletedTasks {
             base = base.filter { !$0.isCompleted }
         }
         
-        // Only with audio
         if filterState.onlyWithAudio {
             base = base.filter { $0.audioFilePath != nil }
         }
         
-        // Now count by type
         switch filter {
         case .all: return base.count
         case .notes: return base.filter { $0.noteType == .note }.count
@@ -334,12 +428,8 @@ struct VoiceNotesListView: View {
     
     // MARK: - Empty State
     private var emptyStateTitle: String {
-        if !searchText.isEmpty {
-            return "No Results"
-        }
-        if filterState.hasActiveFilters {
-            return "No Matches"
-        }
+        if !searchText.isEmpty { return "No Results" }
+        if filterState.hasActiveFilters { return "No Matches" }
         switch selectedFilter {
         case .all: return "No Items"
         case .notes: return "No Notes"
@@ -349,9 +439,7 @@ struct VoiceNotesListView: View {
     }
     
     private var emptyStateIcon: String {
-        if !searchText.isEmpty || filterState.hasActiveFilters {
-            return "magnifyingglass"
-        }
+        if !searchText.isEmpty || filterState.hasActiveFilters { return "magnifyingglass" }
         switch selectedFilter {
         case .all: return "tray"
         case .notes: return "doc.text"
@@ -361,25 +449,14 @@ struct VoiceNotesListView: View {
     }
     
     private var emptyStateDescription: String {
-        if !searchText.isEmpty {
-            return "No items match '\(searchText)'"
-        }
-        if filterState.hasActiveFilters {
-            return "Try adjusting your filters"
-        }
+        if !searchText.isEmpty { return "No items match '\(searchText)'" }
+        if filterState.hasActiveFilters { return "Try adjusting your filters" }
         switch selectedFilter {
         case .all: return "Tap + to record your first item."
         case .notes: return "No notes yet."
         case .tasks: return "No tasks found."
         case .events: return "No events scheduled."
         }
-    }
-
-    private func deleteNotes(at offsets: IndexSet) {
-        for index in offsets {
-            context.delete(notes[index])
-        }
-        try? context.save()
     }
 }
 
