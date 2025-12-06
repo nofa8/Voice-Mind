@@ -9,7 +9,7 @@ final class VoiceNote {
     // Raw user speech
     var transcript: String
     
-    // 🔥 Audio file path for playback
+    // Audio file path for playback
     var audioFilePath: String?
     
     // AI Analysis
@@ -17,14 +17,17 @@ final class VoiceNote {
     var sentiment: String?
     var keywords: [String]?
     
-    var actionItems: [String]? // Extracted tasks
-    var category: String?      // e.g., "Work", "Personal", "Ideas"
-    var priority: String?      // "High", "Medium", "Low"
+    var actionItems: [String]?
+    var category: String?
+    var priority: String?
     
-    var eventDate: Date?       // When the event happens
-    var isCompleted: Bool      // Checkbox for task items
+    var eventDate: Date?
+    var isCompleted: Bool
     var noteType: NoteType     
-    var eventLocation: String? // Where the event happens
+    var eventLocation: String?
+    
+    // 🔥 Pin feature
+    var isPinned: Bool
 
     // Metadata
     var detectedLanguage: String? 
@@ -48,7 +51,8 @@ final class VoiceNote {
         detectedLanguage: String? = nil,
         createdAt: Date = Date(),
         noteType: NoteType = .note,
-        audioFilePath: String? = nil
+        audioFilePath: String? = nil,
+        isPinned: Bool = false
     ) {
         self.id = UUID()
         self.createdAt = createdAt
@@ -66,6 +70,7 @@ final class VoiceNote {
         self.priority = priority
         
         self.isCompleted = false
+        self.isPinned = isPinned
         self.detectedLanguage = detectedLanguage
         self.audioFilePath = audioFilePath
     }
@@ -73,7 +78,7 @@ final class VoiceNote {
 
 // Simplified Enum
 enum NoteType: String, CaseIterable, Codable {
-    case note         // Standard thought/journal
-    case task         // Actionable item (needs a checkbox)
-    case event        // Has a specific time/location (meeting)
+    case note
+    case task
+    case event
 }

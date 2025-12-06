@@ -58,6 +58,13 @@ struct NoteRow: View {
                         Image(systemName: icon)
                             .foregroundStyle(iconColor)
                         
+                        // 🔥 Pin indicator
+                        if note.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                        
                         Text(note.noteType.rawValue.capitalized)
                             .font(.caption)
                             .fontWeight(.bold)
