@@ -3,6 +3,7 @@ import Foundation
 import AVFoundation
 import Speech
 import SwiftData
+import StoreKit
 
 @MainActor
 class VoiceRecorderViewModel: ObservableObject {
@@ -237,6 +238,9 @@ class VoiceRecorderViewModel: ObservableObject {
             ctx.insert(note)
             try? ctx.save()
             currentAudioPath = nil
+            
+            // 🔥 App Review: Request after 3rd successful note
+            requestReviewIfAppropriate()
 
         } catch let error as GeminiError {
             print("⚠️ Gemini failure:", error)
@@ -250,5 +254,28 @@ class VoiceRecorderViewModel: ObservableObject {
     func detectLanguage(_ text: String) async throws -> String {
         let system = "Detect the language. Reply only with the language name."
         return try await GeminiService.shared.sendPrompt("Text:\n\(text)", systemInstruction: system)
+    }
+    
+    // 🔥 App Review Request
+    private func requestReviewIfAppropriate() {
+        let noteCountKey = "successfulNoteCount"
+        let hasRequestedKey = "hasRequestedReview"
+        
+        // Don't ask again if already requested
+        guard !UserDefaults.standard.bool(forKey: hasRequestedKey) else { return }
+        
+        // Increment and check count
+        let count = UserDefaults.standard.integer(forKey: noteCountKey) + 1
+        UserDefaults.standard.set(count, forKey: noteCountKey)
+        
+        // Request review on 3rd successful note
+        if count == 3 {
+            UserDefaults.standard.set(true, forKey: hasRequestedKey)
+            
+            // Get active window scene and request review
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                SKStoreReviewController.requestReview(in: windowScene)
+            }
+        }
     }
 }
