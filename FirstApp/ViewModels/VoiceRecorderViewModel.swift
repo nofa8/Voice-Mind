@@ -1,92 +1,126 @@
+// VoiceRecorderViewModel.swift
 import Foundation
 import AVFoundation
 import Speech
 import SwiftData
+import StoreKit
 
 @MainActor
 class VoiceRecorderViewModel: ObservableObject {
     @Published var isRecording = false
     @Published var transcription = ""
+    
+    // Analysis State
     @Published var summary = ""
     @Published var sentiment = ""
     @Published var keywords: [String] = []
-    @Published var translation = ""
-    @Published var targetLanguage = "English"
     
-        // 🔥 Add this:
-    var modelContext: ModelContext?
+    // AI Insights
+    @Published var actionItems: [String] = []
+    @Published var category = ""
+    @Published var priority = ""
+    
+    // Selected Language for Recognition
+    @Published var selectedLanguage = "en-US"
 
-    func setContext(_ context: ModelContext) {
-        self.modelContext = context
-    }
+    var modelContext: ModelContext?
+    func setContext(_ context: ModelContext) { self.modelContext = context }
 
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
-    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+    private var speechRecognizer: SFSpeechRecognizer?
+    
+    // Audio Recording
+    private var audioRecorder: AVAudioRecorder?
+    private var currentAudioPath: String?
     
     // MARK: - Permissions
     func requestPermissions() async {
-        SFSpeechRecognizer.requestAuthorization { status in
-            print(status == .authorized ? "✅ Speech recognition authorized" : "❌ Speech recognition denied")
-        }
-        AVAudioApplication.requestRecordPermission { granted in
-            print(granted ? "✅ Microphone access granted" : "❌ Microphone access denied")
-        }
+        SFSpeechRecognizer.requestAuthorization { _ in }
+        AVAudioApplication.requestRecordPermission { _ in }
     }
     
-    
-    func saveVoiceNote(
-        transcript: String,
-        summary: String?,
-        sentiment: String?,
-        keywords: [String]?,
-        translation: String?,
-        detectedLanguage: String?,
-        targetLanguage: String?,
-        modelContext: ModelContext
-    ) {
-        let note = VoiceNote(
-            transcript: transcript,
-            summary: summary,
-            sentiment: sentiment,
-            keywords: keywords,
-            translation: translation,
-            detectedLanguage: detectedLanguage,
-            targetLanguage: targetLanguage
-        )
-        
-        modelContext.insert(note)
-        
-        do {
-            try modelContext.save()
-        } catch {
-            print("❌ Failed to save note:", error)
-        }
+    // MARK: - Audio File Management
+    private func getDocumentsDirectory() -> URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
-
-
     
-    // MARK: - Recording
-    func startRecording() {
-        transcription = "Hello how are you in this beaufiful morning?"
+    private func generateAudioFilePath() -> URL {
+        let timestamp = Date().timeIntervalSince1970
+        let filename = "voice_note_\(Int(timestamp)).m4a"
+        return getDocumentsDirectory().appendingPathComponent(filename)
+    }
+    
+    // MARK: - Recording Logic
+    
+    func startRecording(language: String) {
+        transcription = ""
+        summary = ""
+        keywords = []
+        actionItems = []
+        
+        let locale = Locale(identifier: language)
+        if speechRecognizer?.locale != locale {
+            speechRecognizer = SFSpeechRecognizer(locale: locale)
+        }
+        
+        guard let recognizer = speechRecognizer, recognizer.isAvailable else {
+            print("❌ Speech recognizer not available for \(language)")
+            summary = "Speech recognition not available for this language"
+            return
+        }
+        
         isRecording = true
         
         let audioSession = AVAudioSession.sharedInstance()
-        try? audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
-        try? audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        do {
+            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("❌ Audio session error: \(error)")
+            return
+        }
         
+        // Setup Audio File Recording
+        let audioURL = generateAudioFilePath()
+        currentAudioPath = audioURL.path
+        
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 44100.0,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+        
+        do {
+            audioRecorder = try AVAudioRecorder(url: audioURL, settings: settings)
+            audioRecorder?.record()
+        } catch {
+            print("❌ Audio recorder error: \(error)")
+        }
+        
+        // Speech Recognition Setup
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         guard let recognitionRequest = recognitionRequest else { return }
         recognitionRequest.shouldReportPartialResults = true
         
         let inputNode = audioEngine.inputNode
-        recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
+        
+        recognitionTask = recognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
+            guard let self = self else { return }
+            
             if let result = result {
-                self.transcription = result.bestTranscription.formattedString
+                Task { @MainActor in
+                    self.transcription = result.bestTranscription.formattedString
+                }
             }
             if error != nil || result?.isFinal == true {
-                self.stopRecording()
+                Task { @MainActor in
+                    if self.isRecording {
+                        self.stopRecording()
+                    }
+                }
             }
         }
         
@@ -101,72 +135,147 @@ class VoiceRecorderViewModel: ObservableObject {
     
     func stopRecording() {
         isRecording = false
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        
+        audioRecorder?.stop()
+        audioRecorder = nil
+        
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
+        
+        if audioEngine.inputNode.numberOfInputs > 0 {
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
         
         Task {
-            await analyzeAndTranslate()
+            await analyze()
         }
     }
     
-    // MARK: - Analysis + Translation
-    func analyzeAndTranslate() async {
+    // MARK: - Analysis
+    func analyze() async {
         let text = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty else { 
+            if let path = currentAudioPath {
+                try? FileManager.default.removeItem(atPath: path)
+            }
+            currentAudioPath = nil
+            return 
+        }
         
         do {
-            // 1. Detect original language
             let detectedLang = try await detectLanguage(text)
-
-            // 2. Analyze with Gemini
             let analysis = try await GeminiAnalysisService.shared.analyze(text)
+            
+            // 🔥 Robust date parsing - try multiple formats
+            var extractedDate: Date? = nil
+            if let dateString = analysis.extractedDate {
+                let formatter = ISO8601DateFormatter()
+                
+                // Try formats in order of specificity
+                let formatOptions: [ISO8601DateFormatter.Options] = [
+                    [.withInternetDateTime, .withFractionalSeconds],
+                    [.withInternetDateTime],
+                    [.withFullDate, .withTime, .withColonSeparatorInTime],
+                    [.withFullDate, .withTime, .withColonSeparatorInTime, .withTimeZone],
+                    [.withFullDate]
+                ]
+                
+                for options in formatOptions {
+                    formatter.formatOptions = options
+                    if let date = formatter.date(from: dateString) {
+                        extractedDate = date
+                        print("✅ Parsed date: \(date) from: \(dateString)")
+                        break
+                    }
+                }
+                
+                // Fallback: try DateFormatter for non-ISO formats
+                if extractedDate == nil {
+                    let fallbackFormatter = DateFormatter()
+                    fallbackFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+                    fallbackFormatter.timeZone = TimeZone.current
+                    extractedDate = fallbackFormatter.date(from: dateString)
+                    
+                    if extractedDate != nil {
+                        print("✅ Parsed date (fallback): \(extractedDate!) from: \(dateString)")
+                    } else {
+                        print("⚠️ Failed to parse date: \(dateString)")
+                    }
+                }
+            }
+            
+            let type: NoteType = switch analysis.type.lowercased() {
+                case "task": .task
+                case "event": .event
+                default: .note
+            }
+            
             self.summary = analysis.summary
             self.sentiment = analysis.sentiment
-            self.keywords = analysis.keywords
+            self.category = analysis.category
 
-            // 3. Translate summary
-            let translated = try await GeminiTranslationService.shared.translate(
-                analysis.summary,
-                to: targetLanguage
-            )
-            self.translation = translated
-
-            // 4. Save to database
-            guard let ctx = modelContext else {
-                print("❌ ModelContext not set")
-                return
-            }
-
-            saveVoiceNote(
+            guard let ctx = modelContext else { return }
+            
+            let note = VoiceNote(
                 transcript: text,
-                summary: summary,
-                sentiment: sentiment,
-                keywords: keywords,
-                translation: translation,
+                summary: analysis.summary,
+                sentiment: analysis.sentiment,
+                keywords: analysis.keywords,
+                actionItems: analysis.actionItems,
+                category: analysis.category,
+                priority: analysis.priority,
+                eventDate: extractedDate,
+                eventLocation: analysis.extractedLocation,
                 detectedLanguage: detectedLang,
-                targetLanguage: targetLanguage,
-                modelContext: ctx
+                noteType: type,
+                audioFilePath: currentAudioPath
             )
+            
+            ctx.insert(note)
+            try? ctx.save()
+            currentAudioPath = nil
+            
+            // 🔥 App Review: Request after 3rd successful note
+            requestReviewIfAppropriate()
 
-        } catch {
+        } catch let error as GeminiError {
             print("⚠️ Gemini failure:", error)
+            self.summary = error.localizedDescription
+        } catch {
+            print("⚠️ Unknown error:", error)
             self.summary = "Error during analysis"
-            self.translation = "Translation failed"
         }
     }
 
-    
     func detectLanguage(_ text: String) async throws -> String {
-        let system = "Detect the language of this text. Reply with only the language name (e.g., English, Portuguese)."
-
-        let result = try await GeminiService.shared.sendPrompt(
-            "Text:\n\(text)",
-            systemInstruction: system
-        )
-
-        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+        let system = "Detect the language. Reply only with the language name."
+        return try await GeminiService.shared.sendPrompt("Text:\n\(text)", systemInstruction: system)
     }
-
+    
+    // 🔥 App Review Request
+    private func requestReviewIfAppropriate() {
+        let noteCountKey = "successfulNoteCount"
+        let hasRequestedKey = "hasRequestedReview"
+        
+        // Don't ask again if already requested
+        guard !UserDefaults.standard.bool(forKey: hasRequestedKey) else { return }
+        
+        // Increment and check count
+        let count = UserDefaults.standard.integer(forKey: noteCountKey) + 1
+        UserDefaults.standard.set(count, forKey: noteCountKey)
+        
+        // Request review on 3rd successful note
+        if count == 3 {
+            UserDefaults.standard.set(true, forKey: hasRequestedKey)
+            
+            // Get active window scene and request review
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                SKStoreReviewController.requestReview(in: windowScene)
+            }
+        }
+    }
 }

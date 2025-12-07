@@ -5,40 +5,80 @@ import SwiftData
 final class VoiceNote {
     @Attribute(.unique) var id: UUID
     var createdAt: Date
-
+    
     // Raw user speech
     var transcript: String
-
-    // Gemini analysis
+    
+    // Audio file path for playback
+    var audioFilePath: String?
+    
+    // AI Analysis
     var summary: String?
     var sentiment: String?
     var keywords: [String]?
-    var translation: String?
+    
+    var actionItems: [String]?
+    var category: String?
+    var priority: String?
+    
+    var eventDate: Date?
+    var isCompleted: Bool
+    var noteType: NoteType     
+    var eventLocation: String?
+    
+    // 🔥 Pin feature
+    var isPinned: Bool
 
-    // Language metadata
-    var detectedLanguage: String?
-    var targetLanguage: String?
-
+    // Metadata
+    var detectedLanguage: String? 
+    
+    // Computed property for audio URL
+    var audioURL: URL? {
+        guard let path = audioFilePath else { return nil }
+        return URL(fileURLWithPath: path)
+    }
+    
     init(
         transcript: String,
         summary: String? = nil,
         sentiment: String? = nil,
         keywords: [String]? = nil,
-        translation: String? = nil,
+        actionItems: [String]? = nil,
+        category: String? = nil,
+        priority: String? = nil,
+        eventDate: Date? = nil,
+        eventLocation: String? = nil,
         detectedLanguage: String? = nil,
-        targetLanguage: String? = nil
+        createdAt: Date = Date(),
+        noteType: NoteType = .note,
+        audioFilePath: String? = nil,
+        isPinned: Bool = false
     ) {
         self.id = UUID()
-        self.createdAt = Date()
+        self.createdAt = createdAt
+        self.noteType = noteType
+        self.eventDate = eventDate
+        self.eventLocation = eventLocation
         
         self.transcript = transcript
         self.summary = summary
         self.sentiment = sentiment
         self.keywords = keywords
-        self.translation = translation
+        
+        self.actionItems = actionItems
+        self.category = category
+        self.priority = priority
+        
+        self.isCompleted = false
+        self.isPinned = isPinned
         self.detectedLanguage = detectedLanguage
-        self.targetLanguage = targetLanguage
+        self.audioFilePath = audioFilePath
     }
 }
 
-
+// Simplified Enum
+enum NoteType: String, CaseIterable, Codable {
+    case note
+    case task
+    case event
+}
