@@ -232,7 +232,8 @@ class VoiceRecorderViewModel: ObservableObject {
                 eventLocation: analysis.extractedLocation,
                 detectedLanguage: detectedLang,
                 noteType: type,
-                audioFilePath: currentAudioPath
+                audioFilePath: currentAudioPath,
+                analysisStatus: .completed  // 🔥 Mark as completed
             )
             
             ctx.insert(note)
@@ -245,10 +246,28 @@ class VoiceRecorderViewModel: ObservableObject {
         } catch let error as GeminiError {
             print("⚠️ Gemini failure:", error)
             self.summary = error.localizedDescription
+            saveFailedNote(text: text, error: error.localizedDescription)
         } catch {
             print("⚠️ Unknown error:", error)
             self.summary = "Error during analysis"
+            saveFailedNote(text: text, error: "Error during analysis")
         }
+    }
+    
+    // 🔥 Save note with failed status (for retry later)
+    private func saveFailedNote(text: String, error: String) {
+        guard let ctx = modelContext else { return }
+        
+        let note = VoiceNote(
+            transcript: text,
+            summary: "⚠️ Analysis failed: \(error)",
+            audioFilePath: currentAudioPath,
+            analysisStatus: .failed
+        )
+        
+        ctx.insert(note)
+        try? ctx.save()
+        currentAudioPath = nil
     }
 
     func detectLanguage(_ text: String) async throws -> String {

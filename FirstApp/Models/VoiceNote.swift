@@ -1,6 +1,13 @@
 import Foundation
 import SwiftData
 
+// 🔥 Analysis Status for Retry Logic
+enum AnalysisStatus: String, Codable {
+    case pending
+    case completed
+    case failed
+}
+
 @Model
 final class VoiceNote {
     @Attribute(.unique) var id: UUID
@@ -28,6 +35,9 @@ final class VoiceNote {
     
     // 🔥 Pin feature
     var isPinned: Bool
+    
+    // 🔥 Analysis Status (for retry)
+    var analysisStatus: AnalysisStatus
 
     // Metadata
     var detectedLanguage: String? 
@@ -52,7 +62,8 @@ final class VoiceNote {
         createdAt: Date = Date(),
         noteType: NoteType = .note,
         audioFilePath: String? = nil,
-        isPinned: Bool = false
+        isPinned: Bool = false,
+        analysisStatus: AnalysisStatus = .completed
     ) {
         self.id = UUID()
         self.createdAt = createdAt
@@ -71,6 +82,7 @@ final class VoiceNote {
         
         self.isCompleted = false
         self.isPinned = isPinned
+        self.analysisStatus = analysisStatus
         self.detectedLanguage = detectedLanguage
         self.audioFilePath = audioFilePath
     }

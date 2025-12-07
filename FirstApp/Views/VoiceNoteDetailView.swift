@@ -71,10 +71,23 @@ class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
 // MARK: - Main View
 struct VoiceNoteDetailView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
     @State var note: VoiceNote
     @StateObject private var audioPlayer = AudioPlayerManager()
     
-    // 🔥 Toast state (replaces alerts for success)
+    // 🔥 Edit Mode
+    @State private var isEditing = false
+    
+    // 🔥 Draft State (for Cancel support)
+    @State private var draftTranscript = ""
+    @State private var draftSummary = ""
+    @State private var draftCategory = ""
+    @State private var draftPriority = ""
+    @State private var draftEventDate: Date? = nil
+    @State private var draftEventLocation = ""
+    @State private var draftNoteType: NoteType = .note
+    
+    // Toast state
     @State private var showToast = false
     @State private var toastMessage = ""
     @State private var toastType: ToastType = .success
@@ -82,13 +95,27 @@ struct VoiceNoteDetailView: View {
     // Loading states
     @State private var isAddingToCalendar = false
     @State private var addingReminderIndex: Int? = nil
+    @State private var isRetryingAnalysis = false
+    
+    // Picker options
+    let categories = ["Work", "Personal", "Health", "Finance", "Idea", "Other"]
+    let priorities = ["High", "Medium", "Low"]
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 
-                // Type Badge
-                typeBadge
+                // 🔥 Failed Analysis Warning Banner
+                if note.analysisStatus == .failed {
+                    failedAnalysisBanner
+                }
+                
+                // Type Badge (with edit support)
+                if isEditing {
+                    editableTypeBadge
+                } else {
+                    typeBadge
+                }
                 
                 // Audio Player (if audio exists)
                 if note.audioURL != nil {
@@ -96,21 +123,31 @@ struct VoiceNoteDetailView: View {
                 }
                 
                 // Type-Specific Sections
-                switch note.noteType {
-                case .task:
-                    taskSpecificSection
-                case .event:
-                    eventSpecificSection
-                case .note:
-                    noteSpecificSection
+                if isEditing {
+                    editableEventSection
+                } else {
+                    switch note.noteType {
+                    case .task:
+                        taskSpecificSection
+                    case .event:
+                        eventSpecificSection
+                    case .note:
+                        noteSpecificSection
+                    }
                 }
                 
                 Divider()
                 
-                // Common Sections
-                section("Transcript", text: note.transcript)
-                section("Summary", text: note.summary)
-                section("Sentiment", text: note.sentiment)
+                // Editable Common Sections
+                if isEditing {
+                    editableTranscriptSection
+                    editableSummarySection
+                    editableCategoryPrioritySection
+                } else {
+                    section("Transcript", text: note.transcript)
+                    section("Summary", text: note.summary)
+                    section("Sentiment", text: note.sentiment)
+                }
                 
                 if let keywords = note.keywords, !keywords.isEmpty {
                     keywordsSection(keywords)
@@ -120,14 +157,38 @@ struct VoiceNoteDetailView: View {
                     section("Detected Language", text: lang)
                 }
                 
-                Divider()
-
-                deleteButton
+                if !isEditing {
+                    Divider()
+                    deleteButton
+                }
             }
             .padding()
         }
-        .navigationTitle("Details")
+        .navigationTitle(isEditing ? "Edit Note" : "Details")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if isEditing {
+                    Button("Save") {
+                        saveChanges()
+                    }
+                    .fontWeight(.semibold)
+                } else {
+                    Button("Edit") {
+                        enterEditMode()
+                    }
+                }
+            }
+            
+            ToolbarItem(placement: .navigationBarLeading) {
+                if isEditing {
+                    Button("Cancel") {
+                        cancelEdit()
+                    }
+                    .foregroundStyle(.red)
+                }
+            }
+        }
         .onAppear {
             if let url = note.audioURL {
                 audioPlayer.loadAudio(from: url)
@@ -137,6 +198,298 @@ struct VoiceNoteDetailView: View {
             audioPlayer.cleanup()
         }
         .toast(isPresented: $showToast, message: toastMessage, type: toastType)
+    }
+    
+    // MARK: - Edit Mode Functions
+    
+    private func enterEditMode() {
+        // Copy current values to draft state
+        draftTranscript = note.transcript
+        draftSummary = note.summary ?? ""
+        draftCategory = note.category ?? ""
+        draftPriority = note.priority ?? ""
+        draftEventDate = note.eventDate
+        draftEventLocation = note.eventLocation ?? ""
+        draftNoteType = note.noteType
+        
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isEditing = true
+        }
+    }
+    
+    private func cancelEdit() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isEditing = false
+        }
+    }
+    
+    private func saveChanges() {
+        // Write draft state back to model
+        note.transcript = draftTranscript
+        note.summary = draftSummary.isEmpty ? nil : draftSummary
+        note.category = draftCategory.isEmpty ? nil : draftCategory
+        note.priority = draftPriority.isEmpty ? nil : draftPriority
+        note.eventDate = draftEventDate
+        note.eventLocation = draftEventLocation.isEmpty ? nil : draftEventLocation
+        note.noteType = draftNoteType
+        
+        try? context.save()
+        
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isEditing = false
+        }
+        
+        showToastMessage("Changes saved", type: .success)
+    }
+    
+    // MARK: - Editable Sections
+    
+    private var editableTypeBadge: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Note Type")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            
+            Picker("Type", selection: $draftNoteType) {
+                Label("Note", systemImage: "doc.text").tag(NoteType.note)
+                Label("Task", systemImage: "checklist").tag(NoteType.task)
+                Label("Event", systemImage: "calendar").tag(NoteType.event)
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding()
+        .background(Theme.cardBackground)
+        .cornerRadius(Theme.cornerRadius)
+    }
+    
+    private var editableEventSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Date Picker
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Event Date")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    Spacer()
+                    
+                    if draftEventDate != nil {
+                        Button("Clear") {
+                            draftEventDate = nil
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                    }
+                }
+                
+                if draftEventDate != nil {
+                    DatePicker(
+                        "",
+                        selection: Binding(
+                            get: { draftEventDate ?? Date() },
+                            set: { draftEventDate = $0 }
+                        ),
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    .datePickerStyle(.graphical)
+                } else {
+                    Button {
+                        draftEventDate = Date()
+                    } label: {
+                        Label("Add Date", systemImage: "calendar.badge.plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            
+            // Location
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Location")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                TextField("Enter location...", text: $draftEventLocation)
+                    .textFieldStyle(.roundedBorder)
+            }
+        }
+        .padding()
+        .background(Theme.cardBackground)
+        .cornerRadius(Theme.cornerRadius)
+    }
+    
+    private var editableTranscriptSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Transcript")
+                .font(.headline)
+            
+            TextEditor(text: $draftTranscript)
+                .frame(minHeight: 100)
+                .padding(8)
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
+        }
+    }
+    
+    private var editableSummarySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Summary")
+                .font(.headline)
+            
+            TextEditor(text: $draftSummary)
+                .frame(minHeight: 80)
+                .padding(8)
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
+        }
+    }
+    
+    private var editableCategoryPrioritySection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Category Picker
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Category")
+                    .font(.headline)
+                
+                Picker("Category", selection: $draftCategory) {
+                    Text("None").tag("")
+                    ForEach(categories, id: \.self) { cat in
+                        Text(cat).tag(cat)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(Color(.systemGray6))
+                .cornerRadius(8)
+            }
+            
+            // Priority Picker
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Priority")
+                    .font(.headline)
+                
+                Picker("Priority", selection: $draftPriority) {
+                    Text("None").tag("")
+                    ForEach(priorities, id: \.self) { pri in
+                        HStack {
+                            Circle()
+                                .fill(priorityColorFor(pri))
+                                .frame(width: 8, height: 8)
+                            Text(pri)
+                        }
+                        .tag(pri)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+        .padding()
+        .background(Theme.cardBackground)
+        .cornerRadius(Theme.cornerRadius)
+    }
+    
+    private func priorityColorFor(_ priority: String) -> Color {
+        switch priority.lowercased() {
+        case "high": return .red
+        case "medium": return .orange
+        case "low": return .green
+        default: return .gray
+        }
+    }
+    
+    // MARK: - Failed Analysis Banner
+    
+    private var failedAnalysisBanner: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.white)
+                Text("Analysis Failed")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
+            }
+            
+            Text("The AI analysis failed. You can retry or edit the note manually.")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.9))
+                .multilineTextAlignment(.center)
+            
+            Button {
+                retryAnalysis()
+            } label: {
+                HStack {
+                    if isRetryingAnalysis {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .orange))
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    Text(isRetryingAnalysis ? "Analyzing..." : "Retry Analysis")
+                }
+                .fontWeight(.semibold)
+                .foregroundStyle(.orange)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(.white)
+                .cornerRadius(20)
+            }
+            .disabled(isRetryingAnalysis)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(Color.orange.gradient)
+        .cornerRadius(Theme.cornerRadius)
+    }
+    
+    // MARK: - Retry Analysis
+    
+    private func retryAnalysis() {
+        isRetryingAnalysis = true
+        
+        Task {
+            do {
+                let analysis = try await GeminiAnalysisService.shared.analyze(note.transcript)
+                
+                // Parse date if present
+                var extractedDate: Date? = nil
+                if let dateString = analysis.extractedDate {
+                    let formatter = ISO8601DateFormatter()
+                    formatter.formatOptions = [.withInternetDateTime]
+                    extractedDate = formatter.date(from: dateString)
+                }
+                
+                let type: NoteType = switch analysis.type.lowercased() {
+                    case "task": .task
+                    case "event": .event
+                    default: .note
+                }
+                
+                await MainActor.run {
+                    // Update note with analysis results
+                    note.summary = analysis.summary
+                    note.sentiment = analysis.sentiment
+                    note.keywords = analysis.keywords
+                    note.actionItems = analysis.actionItems
+                    note.category = analysis.category
+                    note.priority = analysis.priority
+                    note.eventDate = extractedDate
+                    note.eventLocation = analysis.extractedLocation
+                    note.noteType = type
+                    note.analysisStatus = .completed
+                    
+                    try? context.save()
+                    
+                    isRetryingAnalysis = false
+                    showToastMessage("Analysis complete!", type: .success)
+                }
+            } catch {
+                await MainActor.run {
+                    isRetryingAnalysis = false
+                    showToastMessage("Retry failed: \(error.localizedDescription)", type: .error)
+                }
+            }
+        }
     }
     
     // MARK: - Show Toast Helper

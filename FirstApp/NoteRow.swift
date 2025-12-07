@@ -65,6 +65,13 @@ struct NoteRow: View {
                                 .foregroundStyle(.orange)
                         }
                         
+                        // 🔥 Failed analysis warning
+                        if note.analysisStatus == .failed {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                        
                         Text(note.noteType.rawValue.capitalized)
                             .font(.caption)
                             .fontWeight(.bold)

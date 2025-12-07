@@ -33,6 +33,13 @@ struct VoiceMindApp: App {
                 .tabItem {
                     Label("Agenda", systemImage: "calendar")
                 }
+                
+                NavigationStack {
+                    StatsView()
+                }
+                .tabItem {
+                    Label("Insights", systemImage: "chart.bar.fill")
+                }
             }
         }
         .modelContainer(for: VoiceNote.self)
