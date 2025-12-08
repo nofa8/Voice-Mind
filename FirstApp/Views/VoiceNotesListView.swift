@@ -24,14 +24,17 @@ enum NoteFilter: String, CaseIterable, Identifiable {
 struct VoiceNotesListView: View {
     @Environment(\.modelContext) private var context
     
-    // 🔥 FIX: Use the advanced SortDescriptor here to handle pinning automatically
-    @Query(sort: [
-        SortDescriptor(\VoiceNote.isPinned, order: .reverse), // Pinned first
-        SortDescriptor(\VoiceNote.createdAt, order: .reverse) // Then newest
-    ]) private var allNotes: [VoiceNote]
+    // Simple query - sort by date only
+    @Query(sort: \VoiceNote.createdAt, order: .reverse) private var allNotes: [VoiceNote]
     
-    // We can just alias 'notes' to 'allNotes' since the Query handles the sorting now
-    private var notes: [VoiceNote] { allNotes }
+    // 🔥 Sort pinned notes first
+    private var notes: [VoiceNote] {
+        allNotes.sorted { first, second in
+            if first.isPinned && !second.isPinned { return true }
+            if !first.isPinned && second.isPinned { return false }
+            return first.createdAt > second.createdAt
+        }
+    }
     
     @State private var isShowingRecorder = false
     @State private var selectedFilter: NoteFilter = .all
