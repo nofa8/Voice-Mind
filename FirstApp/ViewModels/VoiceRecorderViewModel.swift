@@ -182,10 +182,11 @@ class VoiceRecorderViewModel: ObservableObject {
     func analyze() async {
         let text = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { 
-            if let path = currentAudioPath {
-                try? FileManager.default.removeItem(atPath: path)
+            if let filename = currentAudioFilename {
+                let fileURL = getDocumentsDirectory().appendingPathComponent(filename)
+                try? FileManager.default.removeItem(at: fileURL)
             }
-            currentAudioPath = nil
+            currentAudioFilename = nil
             return 
         }
         
