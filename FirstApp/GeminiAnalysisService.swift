@@ -24,18 +24,25 @@ final class GeminiAnalysisService {
     static let shared = GeminiAnalysisService()
     private init() {}
     
-    func analyze(_ text: String) async throws -> LLMAnalysis {
-        // 🔥 Provide FULL date context for AI
-        let now = Date()
+    // 🔥 PERFORMANCE FIX: Static formatters (expensive to create)
+    private static let humanDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm a"  // "Thursday, December 5, 2024 at 3:46 PM"
-        let fullDateTime = formatter.string(from: now)
-        
-        // Also provide ISO format for reference
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime, .withDashSeparatorInDate, .withColonSeparatorInTime, .withTimeZone]
-        isoFormatter.timeZone = TimeZone.current
-        let isoDate = isoFormatter.string(from: now)
+        formatter.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm a"
+        return formatter
+    }()
+    
+    private static let isoDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withDashSeparatorInDate, .withColonSeparatorInTime, .withTimeZone]
+        formatter.timeZone = TimeZone.current
+        return formatter
+    }()
+    
+    func analyze(_ text: String) async throws -> LLMAnalysis {
+        // 🔥 Use static formatters (much faster)
+        let now = Date()
+        let fullDateTime = Self.humanDateFormatter.string(from: now)
+        let isoDate = Self.isoDateFormatter.string(from: now)
         
         let systemInstruction = """
         You are an intelligent personal assistant analyzing voice notes.

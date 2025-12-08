@@ -33,7 +33,8 @@ class VoiceRecorderViewModel: ObservableObject {
     
     // Audio Recording
     private var audioRecorder: AVAudioRecorder?
-    private var currentAudioPath: String?
+    private var currentAudioFilename: String?  // 🔥 FIX: Store only filename
+    private var isAudioTapInstalled = false     // 🔥 FIX: Track tap state to prevent crash
     
     // MARK: - Permissions
     func requestPermissions() async {
@@ -46,10 +47,10 @@ class VoiceRecorderViewModel: ObservableObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
     
-    private func generateAudioFilePath() -> URL {
+    private func generateAudioFilename() -> String {
+        // 🔥 FIX: Return only filename, not full URL
         let timestamp = Date().timeIntervalSince1970
-        let filename = "voice_note_\(Int(timestamp)).m4a"
-        return getDocumentsDirectory().appendingPathComponent(filename)
+        return "voice_note_\(Int(timestamp)).m4a"
     }
     
     // MARK: - Recording Logic
@@ -82,9 +83,10 @@ class VoiceRecorderViewModel: ObservableObject {
             return
         }
         
-        // Setup Audio File Recording
-        let audioURL = generateAudioFilePath()
-        currentAudioPath = audioURL.path
+        // 🔥 FIX: Store only filename, construct full URL locally
+        let filename = generateAudioFilename()
+        currentAudioFilename = filename
+        let audioURL = getDocumentsDirectory().appendingPathComponent(filename)
         
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
@@ -128,6 +130,7 @@ class VoiceRecorderViewModel: ObservableObject {
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
             recognitionRequest.append(buffer)
         }
+        isAudioTapInstalled = true  // 🔥 FIX: Track that tap is installed
         
         audioEngine.prepare()
         try? audioEngine.start()
@@ -143,8 +146,10 @@ class VoiceRecorderViewModel: ObservableObject {
             audioEngine.stop()
         }
         
-        if audioEngine.inputNode.numberOfInputs > 0 {
+        // 🔥 FIX: Only remove tap if it was installed (prevents crash)
+        if isAudioTapInstalled {
             audioEngine.inputNode.removeTap(onBus: 0)
+            isAudioTapInstalled = false
         }
         
         recognitionRequest?.endAudio()
@@ -232,13 +237,13 @@ class VoiceRecorderViewModel: ObservableObject {
                 eventLocation: analysis.extractedLocation,
                 detectedLanguage: detectedLang,
                 noteType: type,
-                audioFilePath: currentAudioPath,
-                analysisStatus: .completed  // 🔥 Mark as completed
+                audioFilename: currentAudioFilename,  // 🔥 FIX: Use filename
+                analysisStatus: .completed
             )
             
             ctx.insert(note)
             try? ctx.save()
-            currentAudioPath = nil
+            currentAudioFilename = nil
             
             // 🔥 App Review: Request after 3rd successful note
             requestReviewIfAppropriate()
@@ -261,13 +266,13 @@ class VoiceRecorderViewModel: ObservableObject {
         let note = VoiceNote(
             transcript: text,
             summary: "⚠️ Analysis failed: \(error)",
-            audioFilePath: currentAudioPath,
+            audioFilename: currentAudioFilename,  // 🔥 FIX: Use filename
             analysisStatus: .failed
         )
         
         ctx.insert(note)
         try? ctx.save()
-        currentAudioPath = nil
+        currentAudioFilename = nil
     }
 
     func detectLanguage(_ text: String) async throws -> String {

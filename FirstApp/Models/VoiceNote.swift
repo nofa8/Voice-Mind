@@ -16,8 +16,8 @@ final class VoiceNote {
     // Raw user speech
     var transcript: String
     
-    // Audio file path for playback
-    var audioFilePath: String?
+    // 🔥 FIX: Store only FILENAME, not full path (survives app updates)
+    var audioFilename: String?
     
     // AI Analysis
     var summary: String?
@@ -42,10 +42,12 @@ final class VoiceNote {
     // Metadata
     var detectedLanguage: String? 
     
-    // Computed property for audio URL
+    // 🔥 FIX: Dynamically construct URL at runtime (not stored)
+    @Transient
     var audioURL: URL? {
-        guard let path = audioFilePath else { return nil }
-        return URL(fileURLWithPath: path)
+        guard let filename = audioFilename else { return nil }
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return docs.appendingPathComponent(filename)
     }
     
     init(
@@ -61,7 +63,7 @@ final class VoiceNote {
         detectedLanguage: String? = nil,
         createdAt: Date = Date(),
         noteType: NoteType = .note,
-        audioFilePath: String? = nil,
+        audioFilename: String? = nil,  // 🔥 Changed from audioFilePath
         isPinned: Bool = false,
         analysisStatus: AnalysisStatus = .completed
     ) {
@@ -84,7 +86,7 @@ final class VoiceNote {
         self.isPinned = isPinned
         self.analysisStatus = analysisStatus
         self.detectedLanguage = detectedLanguage
-        self.audioFilePath = audioFilePath
+        self.audioFilename = audioFilename  // 🔥 Changed from audioFilePath
     }
 }
 

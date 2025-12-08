@@ -204,12 +204,25 @@ struct AgendaView: View {
         }
     }
     
-    private func notesForDate(_ date: Date) -> [VoiceNote] {
+    // 🔥 PERFORMANCE FIX: Pre-calculate notes by date for O(1) lookup
+    private var notesByDate: [Date: [VoiceNote]] {
         let calendar = Calendar.current
-        return notesWithDates.filter { note in
-            guard let eventDate = note.eventDate else { return false }
-            return calendar.isDate(eventDate, inSameDayAs: date)
+        var dict: [Date: [VoiceNote]] = [:]
+        
+        for note in filteredNotes {
+            guard let eventDate = note.eventDate else { continue }
+            let dayStart = calendar.startOfDay(for: eventDate)
+            dict[dayStart, default: []].append(note)
         }
+        
+        return dict
+    }
+    
+    private func notesForDate(_ date: Date) -> [VoiceNote] {
+        // 🔥 O(1) lookup instead of O(N) filter
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: date)
+        return notesByDate[dayStart] ?? []
     }
     
     private func previousPeriod() {
