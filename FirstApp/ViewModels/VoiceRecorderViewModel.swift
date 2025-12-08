@@ -4,6 +4,7 @@ import AVFoundation
 import Speech
 import SwiftData
 import StoreKit
+import UIKit  // 🔥 For Haptics
 
 @MainActor
 class VoiceRecorderViewModel: ObservableObject {
@@ -40,6 +41,19 @@ class VoiceRecorderViewModel: ObservableObject {
     func requestPermissions() async {
         SFSpeechRecognizer.requestAuthorization { _ in }
         AVAudioApplication.requestRecordPermission { _ in }
+    }
+    
+    // MARK: - Haptics 🔥
+    private func triggerHaptic(style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        let generator = UIImpactFeedbackGenerator(style: style)
+        generator.prepare()
+        generator.impactOccurred()
+    }
+    
+    private func triggerNotificationHaptic(type: UINotificationFeedbackGenerator.FeedbackType) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(type)
     }
     
     // MARK: - Audio File Management
@@ -134,6 +148,8 @@ class VoiceRecorderViewModel: ObservableObject {
         
         audioEngine.prepare()
         try? audioEngine.start()
+        
+        triggerHaptic(style: .heavy)  // 🔥 Confirm recording started
     }
     
     func stopRecording() {
@@ -154,6 +170,8 @@ class VoiceRecorderViewModel: ObservableObject {
         
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
+        
+        triggerNotificationHaptic(type: .success)  // 🔥 Confirm recording stopped
         
         Task {
             await analyze()
@@ -248,14 +266,18 @@ class VoiceRecorderViewModel: ObservableObject {
             // 🔥 App Review: Request after 3rd successful note
             requestReviewIfAppropriate()
 
+
         } catch let error as GeminiError {
             print("⚠️ Gemini failure:", error)
             self.summary = error.localizedDescription
             saveFailedNote(text: text, error: error.localizedDescription)
+            triggerNotificationHaptic(type: .error) 
+    
         } catch {
             print("⚠️ Unknown error:", error)
             self.summary = "Error during analysis"
             saveFailedNote(text: text, error: "Error during analysis")
+            triggerNotificationHaptic(type: .error)
         }
     }
     

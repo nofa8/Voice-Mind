@@ -83,13 +83,13 @@ struct AgendaView: View {
                             case .week:
                                 WeekView(
                                     currentDate: currentDate,
-                                    notes: filteredNotes,
+                                    notesByDate: notesByDate,  // 🚀 O(1) lookup
                                     selectedDate: $selectedDate
                                 )
                             case .month:
                                 MonthView(
                                     currentDate: currentDate,
-                                    notes: filteredNotes,
+                                    notesByDate: notesByDate,  // 🚀 O(1) lookup
                                     selectedDate: $selectedDate
                                 )
                             case .year:
@@ -247,7 +247,7 @@ struct AgendaView: View {
 // MARK: - Week View
 struct WeekView: View {
     let currentDate: Date
-    let notes: [VoiceNote]
+    let notesByDate: [Date: [VoiceNote]]  // 🚀 Dictionary for O(1) lookup
     @Binding var selectedDate: Date?
     
     private var weekDays: [Date] {
@@ -318,11 +318,10 @@ struct WeekView: View {
     }
     
     private func notesForDay(_ date: Date) -> [VoiceNote] {
+        // 🚀 O(1) lookup instead of O(N) filter
         let calendar = Calendar.current
-        return notes.filter { note in
-            guard let eventDate = note.eventDate else { return false }
-            return calendar.isDate(eventDate, inSameDayAs: date)
-        }
+        let startOfDay = calendar.startOfDay(for: date)
+        return notesByDate[startOfDay] ?? []
     }
     
     private func dayOfWeekString(_ date: Date) -> String {
@@ -339,7 +338,7 @@ struct WeekView: View {
 // MARK: - Month View
 struct MonthView: View {
     let currentDate: Date
-    let notes: [VoiceNote]
+    let notesByDate: [Date: [VoiceNote]]  // 🚀 Dictionary for O(1) lookup
     @Binding var selectedDate: Date?
     
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
@@ -408,11 +407,10 @@ struct MonthView: View {
     }
     
     private func notesForDay(_ date: Date) -> [VoiceNote] {
+        // 🚀 O(1) lookup instead of O(N) filter
         let calendar = Calendar.current
-        return notes.filter { note in
-            guard let eventDate = note.eventDate else { return false }
-            return calendar.isDate(eventDate, inSameDayAs: date)
-        }
+        let startOfDay = calendar.startOfDay(for: date)
+        return notesByDate[startOfDay] ?? []
     }
 }
 
