@@ -24,17 +24,14 @@ enum NoteFilter: String, CaseIterable, Identifiable {
 struct VoiceNotesListView: View {
     @Environment(\.modelContext) private var context
     
-    // Simple query - sort by date only
-    @Query(sort: \VoiceNote.createdAt, order: .reverse) private var allNotes: [VoiceNote]
+    // 🔥 FIX: Use the advanced SortDescriptor here to handle pinning automatically
+    @Query(sort: [
+        SortDescriptor(\VoiceNote.isPinned, order: .reverse), // Pinned first
+        SortDescriptor(\VoiceNote.createdAt, order: .reverse) // Then newest
+    ]) private var allNotes: [VoiceNote]
     
-    // 🔥 Sort pinned notes first
-    private var notes: [VoiceNote] {
-        allNotes.sorted { first, second in
-            if first.isPinned && !second.isPinned { return true }
-            if !first.isPinned && second.isPinned { return false }
-            return first.createdAt > second.createdAt
-        }
-    }
+    // We can just alias 'notes' to 'allNotes' since the Query handles the sorting now
+    private var notes: [VoiceNote] { allNotes }
     
     @State private var isShowingRecorder = false
     @State private var selectedFilter: NoteFilter = .all
@@ -209,8 +206,9 @@ struct VoiceNotesListView: View {
         
         // Delete
         Button(role: .destructive) {
-            if let path = note.audioFilePath {
-                try? FileManager.default.removeItem(atPath: path)
+            // 🔥 FIX: Use audioURL (dynamic) instead of stored path
+            if let url = note.audioURL {
+                try? FileManager.default.removeItem(at: url)
             }
             context.delete(note)
             try? context.save()
@@ -347,7 +345,8 @@ struct VoiceNotesListView: View {
         }
         
         if filterState.onlyWithAudio {
-            result = result.filter { $0.audioFilePath != nil }
+            // 🔥 FIX: Check audioFilename instead of path
+            result = result.filter { $0.audioFilename != nil }
         }
         
         return result
@@ -421,7 +420,8 @@ struct VoiceNotesListView: View {
         }
         
         if filterState.onlyWithAudio {
-            base = base.filter { $0.audioFilePath != nil }
+            // 🔥 FIX: Check audioFilename instead of path
+            base = base.filter { $0.audioFilename != nil }
         }
         
         switch filter {
