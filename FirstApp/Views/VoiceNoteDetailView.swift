@@ -849,8 +849,9 @@ struct VoiceNoteDetailView: View {
     
     private var deleteButton: some View {
         Button(role: .destructive) {
-            if let path = note.audioFilePath {
-                try? FileManager.default.removeItem(atPath: path)
+            // 🔥 FIX: Use audioURL (transient) instead of audioFilePath
+            if let url = note.audioURL {
+                try? FileManager.default.removeItem(at: url)
             }
             context.delete(note)
             try? context.save()
