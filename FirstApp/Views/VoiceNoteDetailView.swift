@@ -852,15 +852,17 @@ struct VoiceNoteDetailView: View {
     private var deleteButton: some View {
         Button(role: .destructive) {
             // 🔥 FIX: Use audioURL (transient) instead of audioFilePath
+
             if let url = note.audioURL {
                 try? FileManager.default.removeItem(at: url)
             }
             context.delete(note)
             try? context.save()
-            
-            // Show toast and navigate back to list
             showToastMessage("Note deleted", type: .success)
-            dismiss()
+            // Wait to show the toast and then dismiss
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                dismiss()
+            }
         } label: {
             Text("Delete this note")
                 .frame(maxWidth: .infinity)
