@@ -1,6 +1,13 @@
 import Foundation
 import SwiftData
 
+// 🔥 Analysis Status for Retry Logic
+enum AnalysisStatus: String, Codable {
+    case pending
+    case completed
+    case failed
+}
+
 @Model
 final class VoiceNote {
     @Attribute(.unique) var id: UUID
@@ -9,8 +16,8 @@ final class VoiceNote {
     // Raw user speech
     var transcript: String
     
-    // Audio file path for playback
-    var audioFilePath: String?
+    // 🔥 FIX: Store only FILENAME, not full path (survives app updates)
+    var audioFilename: String?
     
     // AI Analysis
     var summary: String?
@@ -28,14 +35,19 @@ final class VoiceNote {
     
     // 🔥 Pin feature
     var isPinned: Bool
+    
+    // 🔥 Analysis Status (for retry)
+    var analysisStatus: AnalysisStatus
 
     // Metadata
     var detectedLanguage: String? 
     
-    // Computed property for audio URL
+    // 🔥 FIX: Dynamically construct URL at runtime (not stored)
+    @Transient
     var audioURL: URL? {
-        guard let path = audioFilePath else { return nil }
-        return URL(fileURLWithPath: path)
+        guard let filename = audioFilename else { return nil }
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return docs.appendingPathComponent(filename)
     }
     
     init(
@@ -51,8 +63,9 @@ final class VoiceNote {
         detectedLanguage: String? = nil,
         createdAt: Date = Date(),
         noteType: NoteType = .note,
-        audioFilePath: String? = nil,
-        isPinned: Bool = false
+        audioFilename: String? = nil,  // 🔥 Changed from audioFilePath
+        isPinned: Bool = false,
+        analysisStatus: AnalysisStatus = .completed
     ) {
         self.id = UUID()
         self.createdAt = createdAt
@@ -71,8 +84,9 @@ final class VoiceNote {
         
         self.isCompleted = false
         self.isPinned = isPinned
+        self.analysisStatus = analysisStatus
         self.detectedLanguage = detectedLanguage
-        self.audioFilePath = audioFilePath
+        self.audioFilename = audioFilename  // 🔥 Changed from audioFilePath
     }
 }
 

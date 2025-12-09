@@ -154,7 +154,7 @@ struct VoiceNotesListView: View {
                 VoiceNoteDetailView(note: note)
             }
             .sheet(isPresented: $isShowingRecorder) {
-                MainView().modelContext(context)
+                MainView(showCancelButton: true).modelContext(context)
             }
             .sheet(isPresented: $showFilterSheet) {
                 FilterSheetView(
@@ -209,11 +209,13 @@ struct VoiceNotesListView: View {
         
         // Delete
         Button(role: .destructive) {
-            if let path = note.audioFilePath {
-                try? FileManager.default.removeItem(atPath: path)
+            // 🔥 FIX: Use audioURL (dynamic) instead of stored path
+            if let url = note.audioURL {
+                try? FileManager.default.removeItem(at: url)
             }
             context.delete(note)
             try? context.save()
+            showToastMessage("Note deleted", type: .success)
         } label: {
             Label("Delete", systemImage: "trash")
         }
@@ -347,7 +349,8 @@ struct VoiceNotesListView: View {
         }
         
         if filterState.onlyWithAudio {
-            result = result.filter { $0.audioFilePath != nil }
+            // 🔥 FIX: Check audioFilename instead of path
+            result = result.filter { $0.audioFilename != nil }
         }
         
         return result
@@ -421,7 +424,8 @@ struct VoiceNotesListView: View {
         }
         
         if filterState.onlyWithAudio {
-            base = base.filter { $0.audioFilePath != nil }
+            // 🔥 FIX: Check audioFilename instead of path
+            base = base.filter { $0.audioFilename != nil }
         }
         
         switch filter {

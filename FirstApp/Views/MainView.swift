@@ -11,11 +11,11 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var displayName: String {
         switch self {
-        case .englishUS: return "🇺🇸 English"
-        case .portuguese: return "🇵🇹 Portuguese"
-        case .spanish: return "🇪🇸 Spanish"
-        case .french: return "🇫🇷 French"
-        case .german: return "🇩🇪 German"
+        case .englishUS: return "🇺🇸 USA"
+        case .portuguese: return "🇵🇹 PT"
+        case .spanish: return "🇪🇸 ES"
+        case .french: return "🇫🇷 FR"
+        case .german: return "🇩🇪 DE"
         }
     }
 }
@@ -23,6 +23,9 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 struct MainView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    
+    // Control whether Cancel button appears (true when presented as sheet)
+    var showCancelButton: Bool = false
     
     @StateObject private var recorder = VoiceRecorderViewModel()
     @State private var selectedLanguage: AppLanguage = .englishUS // Default
@@ -107,8 +110,10 @@ struct MainView: View {
             .navigationTitle("AI Note")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
+                if showCancelButton {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") { dismiss() }
+                    }
                 }
             }
             .task { await recorder.requestPermissions() }

@@ -4,6 +4,7 @@ import AVFoundation
 import Speech
 import SwiftData
 import StoreKit
+import UIKit
 
 @MainActor
 class VoiceRecorderViewModel: ObservableObject {
@@ -31,9 +32,13 @@ class VoiceRecorderViewModel: ObservableObject {
     private let audioEngine = AVAudioEngine()
     private var speechRecognizer: SFSpeechRecognizer?
     
-    // Audio Recording
-    private var audioRecorder: AVAudioRecorder?
-    private var currentAudioPath: String?
+    // 🔥 HYBRID PIPELINE: Use AVAudioFile instead of AVAudioRecorder
+    private var audioFile: AVAudioFile?
+    private var currentAudioFilename: String?
+    private var isAudioTapInstalled = false
+    
+    // 🔥 LANGUAGE: Store selected language for AI analysis output
+    private var currentLanguageCode: String = "en-US"
     
     // MARK: - Permissions
     func requestPermissions() async {
@@ -41,20 +46,36 @@ class VoiceRecorderViewModel: ObservableObject {
         AVAudioApplication.requestRecordPermission { _ in }
     }
     
+    // MARK: - Haptics
+    private func triggerHaptic(style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        let generator = UIImpactFeedbackGenerator(style: style)
+        generator.prepare()
+        generator.impactOccurred()
+    }
+    
+    private func triggerNotificationHaptic(type: UINotificationFeedbackGenerator.FeedbackType) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(type)
+    }
+    
     // MARK: - Audio File Management
     private func getDocumentsDirectory() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
     
-    private func generateAudioFilePath() -> URL {
+    // 🔥 HYBRID: Generate .wav filename (will be converted to .m4a after recording)
+    private func generateAudioFilename() -> String {
         let timestamp = Date().timeIntervalSince1970
-        let filename = "voice_note_\(Int(timestamp)).m4a"
-        return getDocumentsDirectory().appendingPathComponent(filename)
+        return "voice_note_\(Int(timestamp)).wav"
     }
     
     // MARK: - Recording Logic
     
     func startRecording(language: String) {
+        // 🔥 LANGUAGE: Save for AI analysis output
+        self.currentLanguageCode = language
+        
         transcription = ""
         summary = ""
         keywords = []
@@ -73,8 +94,11 @@ class VoiceRecorderViewModel: ObservableObject {
         
         isRecording = true
         
+        // 🔥 AUDIO SESSION: Go with the Flow (Native Format)
         let audioSession = AVAudioSession.sharedInstance()
         do {
+            // Use .default mode to let system handle processing (better for VM/Simulator)
+            // Remove forced sample rate/buffer duration to prevent clock drift
             try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
@@ -82,30 +106,23 @@ class VoiceRecorderViewModel: ObservableObject {
             return
         }
         
-        // Setup Audio File Recording
-        let audioURL = generateAudioFilePath()
-        currentAudioPath = audioURL.path
-        
-        let settings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 44100.0,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-        ]
-        
-        do {
-            audioRecorder = try AVAudioRecorder(url: audioURL, settings: settings)
-            audioRecorder?.record()
-        } catch {
-            print("❌ Audio recorder error: \(error)")
-        }
+        // 🔥 HYBRID: Generate filename but don't create file yet
+        let filename = generateAudioFilename()
+        currentAudioFilename = filename
         
         // Speech Recognition Setup
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         guard let recognitionRequest = recognitionRequest else { return }
         recognitionRequest.shouldReportPartialResults = true
         
+        // 🔥 STABILITY: Reset engine to clear previous state/crashes
+        audioEngine.reset()
+        
         let inputNode = audioEngine.inputNode
+        let recordingFormat = inputNode.outputFormat(forBus: 0) // Use native output format
+        
+        // 🔥 SAFETY: Remove existing tap if any (prevents "Tap already installed" crash)
+        inputNode.removeTap(onBus: 0)
         
         recognitionTask = recognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
             guard let self = self else { return }
@@ -115,7 +132,8 @@ class VoiceRecorderViewModel: ObservableObject {
                     self.transcription = result.bestTranscription.formattedString
                 }
             }
-            if error != nil || result?.isFinal == true {
+            // Only stop on real error, not just partials
+            if error != nil {
                 Task { @MainActor in
                     if self.isRecording {
                         self.stopRecording()
@@ -124,34 +142,100 @@ class VoiceRecorderViewModel: ObservableObject {
             }
         }
         
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
-            recognitionRequest.append(buffer)
+        // 🔥 HYBRID: Unified tap - writes to BOTH speech recognizer AND audio file
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: recordingFormat) { [weak self] buffer, _ in
+            guard let self = self else { return }
+            
+            // 1. Send to Speech Recognizer
+            self.recognitionRequest?.append(buffer)
+            
+            // 2. Write to Audio File (same data = no conflicts!)
+            do {
+                if self.audioFile == nil {
+                    let filename = self.currentAudioFilename ?? self.generateAudioFilename()
+                    self.currentAudioFilename = filename
+                    let url = self.getDocumentsDirectory().appendingPathComponent(filename)
+                    
+                    // 🔥 FIX: Use the BUFFER'S format settings (safest way to match hardware)
+                    self.audioFile = try AVAudioFile(forWriting: url, settings: buffer.format.settings)
+                }
+                try self.audioFile?.write(from: buffer)
+            } catch {
+                print("❌ Error writing audio: \(error)")
+            }
         }
+        isAudioTapInstalled = true
         
         audioEngine.prepare()
         try? audioEngine.start()
+        
+        triggerHaptic(style: .heavy)
     }
     
     func stopRecording() {
         isRecording = false
         
-        audioRecorder?.stop()
-        audioRecorder = nil
+        // 🔥 HYBRID: Close the audio file
+        audioFile = nil
         
         if audioEngine.isRunning {
             audioEngine.stop()
         }
         
-        if audioEngine.inputNode.numberOfInputs > 0 {
+        if isAudioTapInstalled {
             audioEngine.inputNode.removeTap(onBus: 0)
+            isAudioTapInstalled = false
         }
         
         recognitionRequest?.endAudio()
         recognitionTask?.cancel()
         
+        triggerNotificationHaptic(type: .success)
+        
+        // 🔥 HYBRID: Compress WAV to M4A, then analyze
         Task {
+            if let wavFilename = currentAudioFilename {
+                // Compress to M4A (smaller file size)
+                if let m4aFilename = await compressAudio(wavFilename: wavFilename) {
+                    currentAudioFilename = m4aFilename
+                }
+            }
             await analyze()
+        }
+    }
+    
+    // 🔥 HYBRID: Compress WAV to M4A for storage efficiency
+    private func compressAudio(wavFilename: String) async -> String? {
+        let sourceURL = getDocumentsDirectory().appendingPathComponent(wavFilename)
+        let m4aFilename = wavFilename.replacingOccurrences(of: ".wav", with: ".m4a")
+        let destURL = getDocumentsDirectory().appendingPathComponent(m4aFilename)
+        
+        // Check if source exists
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            print("❌ WAV file not found: \(sourceURL)")
+            return nil
+        }
+        
+        let asset = AVAsset(url: sourceURL)
+        guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
+            print("❌ Could not create export session")
+            return nil
+        }
+        
+        exportSession.outputURL = destURL
+        exportSession.outputFileType = .m4a
+        
+        await exportSession.export()
+        
+        if exportSession.status == .completed {
+            print("✅ Compressed audio: \(wavFilename) → \(m4aFilename)")
+            // Delete the large WAV file
+            try? FileManager.default.removeItem(at: sourceURL)
+            return m4aFilename
+        } else {
+            print("❌ Compression failed: \(exportSession.error?.localizedDescription ?? "unknown")")
+            // Keep the WAV as fallback
+            return wavFilename
         }
     }
     
@@ -159,23 +243,26 @@ class VoiceRecorderViewModel: ObservableObject {
     func analyze() async {
         let text = transcription.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { 
-            if let path = currentAudioPath {
-                try? FileManager.default.removeItem(atPath: path)
+            if let filename = currentAudioFilename {
+                let fileURL = getDocumentsDirectory().appendingPathComponent(filename)
+                try? FileManager.default.removeItem(at: fileURL)
             }
-            currentAudioPath = nil
+            currentAudioFilename = nil
             return 
         }
         
         do {
-            let detectedLang = try await detectLanguage(text)
-            let analysis = try await GeminiAnalysisService.shared.analyze(text)
+            // 🔥 OPTIMIZATION: Use user-selected language instead of asking AI to detect it
+            let targetLanguageName = Locale(identifier: currentLanguageCode).localizedString(forLanguageCode: currentLanguageCode) ?? currentLanguageCode
             
-            // 🔥 Robust date parsing - try multiple formats
+            // 🔥 LANGUAGE: Pass selected language for localized analysis
+            let analysis = try await GeminiAnalysisService.shared.analyze(text, languageCode: currentLanguageCode)
+            
+            // Robust date parsing - try multiple formats
             var extractedDate: Date? = nil
             if let dateString = analysis.extractedDate {
                 let formatter = ISO8601DateFormatter()
                 
-                // Try formats in order of specificity
                 let formatOptions: [ISO8601DateFormatter.Options] = [
                     [.withInternetDateTime, .withFractionalSeconds],
                     [.withInternetDateTime],
@@ -193,7 +280,7 @@ class VoiceRecorderViewModel: ObservableObject {
                     }
                 }
                 
-                // Fallback: try DateFormatter for non-ISO formats
+                // Fallback for non-ISO formats
                 if extractedDate == nil {
                     let fallbackFormatter = DateFormatter()
                     fallbackFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
@@ -230,25 +317,46 @@ class VoiceRecorderViewModel: ObservableObject {
                 priority: analysis.priority,
                 eventDate: extractedDate,
                 eventLocation: analysis.extractedLocation,
-                detectedLanguage: detectedLang,
+                detectedLanguage: targetLanguageName, // 🔥 Use selected language name
                 noteType: type,
-                audioFilePath: currentAudioPath
+                audioFilename: currentAudioFilename,
+                analysisStatus: .completed
             )
             
             ctx.insert(note)
             try? ctx.save()
-            currentAudioPath = nil
+            currentAudioFilename = nil
             
-            // 🔥 App Review: Request after 3rd successful note
             requestReviewIfAppropriate()
 
         } catch let error as GeminiError {
             print("⚠️ Gemini failure:", error)
             self.summary = error.localizedDescription
+            saveFailedNote(text: text, error: error.localizedDescription)
+            triggerNotificationHaptic(type: .error) 
+    
         } catch {
             print("⚠️ Unknown error:", error)
             self.summary = "Error during analysis"
+            saveFailedNote(text: text, error: "Error during analysis")
+            triggerNotificationHaptic(type: .error)
         }
+    }
+    
+    // Save note with failed status (for retry later)
+    private func saveFailedNote(text: String, error: String) {
+        guard let ctx = modelContext else { return }
+        
+        let note = VoiceNote(
+            transcript: text,
+            summary: "⚠️ Analysis failed: \(error)",
+            audioFilename: currentAudioFilename,
+            analysisStatus: .failed
+        )
+        
+        ctx.insert(note)
+        try? ctx.save()
+        currentAudioFilename = nil
     }
 
     func detectLanguage(_ text: String) async throws -> String {
@@ -256,23 +364,19 @@ class VoiceRecorderViewModel: ObservableObject {
         return try await GeminiService.shared.sendPrompt("Text:\n\(text)", systemInstruction: system)
     }
     
-    // 🔥 App Review Request
+    // App Review Request
     private func requestReviewIfAppropriate() {
         let noteCountKey = "successfulNoteCount"
         let hasRequestedKey = "hasRequestedReview"
         
-        // Don't ask again if already requested
         guard !UserDefaults.standard.bool(forKey: hasRequestedKey) else { return }
         
-        // Increment and check count
         let count = UserDefaults.standard.integer(forKey: noteCountKey) + 1
         UserDefaults.standard.set(count, forKey: noteCountKey)
         
-        // Request review on 3rd successful note
         if count == 3 {
             UserDefaults.standard.set(true, forKey: hasRequestedKey)
             
-            // Get active window scene and request review
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                 SKStoreReviewController.requestReview(in: windowScene)
             }

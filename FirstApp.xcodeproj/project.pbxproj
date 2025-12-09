@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D8400E632EE76A5800C67FA7 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8400E622EE76A5800C67FA7 /* StatsView.swift */; };
 		D85CD5732EC7B80D0008E8FC /* VoiceNotesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85CD5722EC7B80D0008E8FC /* VoiceNotesListView.swift */; };
 		D85CD5752EC7B8400008E8FC /* NoteRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85CD5742EC7B8400008E8FC /* NoteRow.swift */; };
 		D85CD5772EC7B8690008E8FC /* VoiceNoteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85CD5762EC7B8690008E8FC /* VoiceNoteDetailView.swift */; };
@@ -48,6 +49,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D8400E622EE76A5800C67FA7 /* StatsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		D85CD5722EC7B80D0008E8FC /* VoiceNotesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNotesListView.swift; sourceTree = "<group>"; };
 		D85CD5742EC7B8400008E8FC /* NoteRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRow.swift; sourceTree = "<group>"; };
 		D85CD5762EC7B8690008E8FC /* VoiceNoteDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNoteDetailView.swift; sourceTree = "<group>"; };
@@ -119,6 +121,7 @@
 		D889E40F2EB6BFA000A8E910 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				D8400E622EE76A5800C67FA7 /* StatsView.swift */,
 				D876501D2EE351DE006E69D6 /* FilterSheetView.swift */,
 				D87650112ECF3CB9006E69D6 /* AgendaView.swift */,
 				D85CD5722EC7B80D0008E8FC /* VoiceNotesListView.swift */,
@@ -332,6 +335,7 @@
 				D889E4112EB6C0AD00A8E910 /* VoiceNote.swift in Sources */,
 				D85CD5732EC7B80D0008E8FC /* VoiceNotesListView.swift in Sources */,
 				D8F74F862E8AC7F0001D31C7 /* VoiceMindApp.swift in Sources */,
+				D8400E632EE76A5800C67FA7 /* StatsView.swift in Sources */,
 				D889E41E2EB8C8DD00A8E910 /* LLM_Service.swift in Sources */,
 				D889E4152EB6C0EB00A8E910 /* MainView.swift in Sources */,
 				D85CD5752EC7B8400008E8FC /* NoteRow.swift in Sources */,

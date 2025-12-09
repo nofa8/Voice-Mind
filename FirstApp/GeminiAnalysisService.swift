@@ -24,55 +24,62 @@ final class GeminiAnalysisService {
     static let shared = GeminiAnalysisService()
     private init() {}
     
-    func analyze(_ text: String) async throws -> LLMAnalysis {
-        // 🔥 Provide FULL date context for AI
-        let now = Date()
+    // 🔥 PERFORMANCE FIX: Static formatters (expensive to create)
+    private static let humanDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm a"  // "Thursday, December 5, 2024 at 3:46 PM"
-        let fullDateTime = formatter.string(from: now)
+        formatter.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm a"
+        return formatter
+    }()
+    
+    private static let isoDateFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withDashSeparatorInDate, .withColonSeparatorInTime, .withTimeZone]
+        formatter.timeZone = TimeZone.current
+        return formatter
+    }()
+    
+    // 🔥 LANGUAGE: Accept languageCode to localize output
+    func analyze(_ text: String, languageCode: String) async throws -> LLMAnalysis {
+        // 🔥 Use static formatters (much faster)
+        let now = Date()
+        let fullDateTime = Self.humanDateFormatter.string(from: now)
+        let isoDate = Self.isoDateFormatter.string(from: now)
         
-        // Also provide ISO format for reference
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime, .withDashSeparatorInDate, .withColonSeparatorInTime, .withTimeZone]
-        isoFormatter.timeZone = TimeZone.current
-        let isoDate = isoFormatter.string(from: now)
+        // Convert "es-ES" -> "Spanish" for better AI understanding
+        let targetLanguage = Locale(identifier: languageCode).localizedString(forLanguageCode: languageCode) ?? languageCode
         
         let systemInstruction = """
         You are an intelligent personal assistant analyzing voice notes.
         
-        CURRENT DATE/TIME CONTEXT:
-        - Human readable: \(fullDateTime)
-        - ISO8601: \(isoDate)
-        - Use this to resolve relative dates like "tomorrow", "next week", "Monday", etc.
+        CURRENT CONTEXT:
+        - Date: \(fullDateTime)
+        - User Language: \(targetLanguage) (\(languageCode))
+        
+        OUTPUT INSTRUCTIONS:
+        - You MUST generate the 'summary', 'actionItems', 'category', and 'sentiment' in \(targetLanguage).
+        - If the user speaks \(targetLanguage), keep it in \(targetLanguage).
+        - If the user speaks a different language, TRANSLATE the analysis into \(targetLanguage).
         
         Return JSON strictly matching this schema:
         {
-          "summary": "First-person summary using 'I' (not 'The user'). Example: 'I have a dentist appointment tomorrow at 8am.'",
+          "summary": "First-person summary in \(targetLanguage) using 'I'. Example: 'Tengo cita con el dentista...'",
           "sentiment": "Positive | Negative | Neutral",
           "keywords": ["keyword1", "keyword2"],
           "actionItems": ["Action 1", "Action 2"],
           "category": "Work | Personal | Health | Finance | Idea",
           "priority": "High | Medium | Low",
           "type": "note | task | event",
-          "extractedDate": "ISO8601 format (YYYY-MM-DDTHH:mm:ss). CALCULATE from relative terms like 'tomorrow', 'next Monday'. Return null ONLY if NO time reference exists.",
-          "extractedLocation": "Location name if mentioned, else null"
+          "extractedDate": "ISO8601 or null",
+          "extractedLocation": "Location or null"
         }
         
         CRITICAL RULES:
-        1. "extractedDate": You MUST calculate dates from relative terms!
-           - If today is \(fullDateTime) and user says "tomorrow at 8am", calculate the actual ISO8601 date.
-           - "tomorrow" = add 1 day to current date
-           - "next Monday" = find the next Monday from today
-           - ALWAYS include the time if mentioned (e.g., "8am" -> T08:00:00)
-        
-        2. "type": 
-           - "event" = has a time/date/place (appointments, meetings, etc.)
+        1. Calculate relative dates (tomorrow -> \(Self.isoDateFormatter.string(from: now.addingTimeInterval(86400))))
+        2. Respond strictly in \(targetLanguage).
+        3. "type": 
+           - "event" = has a time/date/place
            - "task" = action items without specific time
-           - "note" = general thoughts/observations
-        
-        3. "summary": Write from user's perspective using "I" (first person).
-           - CORRECT: "I have a dentist appointment tomorrow at 8am."
-           - WRONG: "The user has a dentist appointment."
+           - "note" = general thoughts
         """
         
         let prompt = "Analyze this voice note:\n\(text)"
