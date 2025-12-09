@@ -855,6 +855,10 @@ struct VoiceNoteDetailView: View {
             }
             context.delete(note)
             try? context.save()
+            
+            // Show toast and navigate back to list
+            showToastMessage("Note deleted", type: .success)
+            dismiss()
         } label: {
             Text("Delete this note")
                 .frame(maxWidth: .infinity)

@@ -88,9 +88,17 @@ class VoiceRecorderViewModel: ObservableObject {
         
         isRecording = true
         
+        // 🔥 AUDIO SESSION: Configure for optimal recording
         let audioSession = AVAudioSession.sharedInstance()
         do {
-            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+            // Keep .playAndRecord so bluetooth/speakers work normally
+            // Use .measurement mode for raw audio (bypasses iOS processing that may cause static)
+            try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
+            
+            // Force 44.1kHz (CD Quality) - fixes sample rate mismatch static
+            try audioSession.setPreferredSampleRate(44100.0)
+            try audioSession.setPreferredIOBufferDuration(0.005) // 5ms buffer for lower latency
+            
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             print("❌ Audio session error: \(error)")
@@ -106,8 +114,14 @@ class VoiceRecorderViewModel: ObservableObject {
         guard let recognitionRequest = recognitionRequest else { return }
         recognitionRequest.shouldReportPartialResults = true
         
+        // 🔥 STABILITY: Reset engine to clear previous state/crashes
+        audioEngine.reset()
+        
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
+        
+        // 🔥 DEBUG: Verify sample rate (should be 44100.0)
+        print("🎤 Recording format: \(recordingFormat.sampleRate)Hz, \(recordingFormat.channelCount) channel(s)")
         
         recognitionTask = recognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
             guard let self = self else { return }

@@ -215,6 +215,7 @@ struct VoiceNotesListView: View {
             }
             context.delete(note)
             try? context.save()
+            showToastMessage("Note deleted", type: .success)
         } label: {
             Label("Delete", systemImage: "trash")
         }
