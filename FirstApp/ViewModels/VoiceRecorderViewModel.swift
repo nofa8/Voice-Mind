@@ -37,6 +37,9 @@ class VoiceRecorderViewModel: ObservableObject {
     private var currentAudioFilename: String?
     private var isAudioTapInstalled = false
     
+    // 🔥 LANGUAGE: Store selected language for AI analysis output
+    private var currentLanguageCode: String = "en-US"
+    
     // MARK: - Permissions
     func requestPermissions() async {
         SFSpeechRecognizer.requestAuthorization { _ in }
@@ -70,6 +73,9 @@ class VoiceRecorderViewModel: ObservableObject {
     // MARK: - Recording Logic
     
     func startRecording(language: String) {
+        // 🔥 LANGUAGE: Save for AI analysis output
+        self.currentLanguageCode = language
+        
         transcription = ""
         summary = ""
         keywords = []
@@ -88,17 +94,12 @@ class VoiceRecorderViewModel: ObservableObject {
         
         isRecording = true
         
-        // 🔥 AUDIO SESSION: Configure for optimal recording
+        // 🔥 AUDIO SESSION: Go with the Flow (Native Format)
         let audioSession = AVAudioSession.sharedInstance()
         do {
-            // Keep .playAndRecord so bluetooth/speakers work normally
-            // Use .measurement mode for raw audio (bypasses iOS processing that may cause static)
-            try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
-            
-            // Force 44.1kHz (CD Quality) - fixes sample rate mismatch static
-            try audioSession.setPreferredSampleRate(44100.0)
-            try audioSession.setPreferredIOBufferDuration(0.005) // 5ms buffer for lower latency
-            
+            // Use .default mode to let system handle processing (better for VM/Simulator)
+            // Remove forced sample rate/buffer duration to prevent clock drift
+            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             print("❌ Audio session error: \(error)")
@@ -118,10 +119,10 @@ class VoiceRecorderViewModel: ObservableObject {
         audioEngine.reset()
         
         let inputNode = audioEngine.inputNode
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
+        let recordingFormat = inputNode.outputFormat(forBus: 0) // Use native output format
         
-        // 🔥 DEBUG: Verify sample rate (should be 44100.0)
-        print("🎤 Recording format: \(recordingFormat.sampleRate)Hz, \(recordingFormat.channelCount) channel(s)")
+        // 🔥 SAFETY: Remove existing tap if any (prevents "Tap already installed" crash)
+        inputNode.removeTap(onBus: 0)
         
         recognitionTask = recognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
             guard let self = self else { return }
@@ -131,7 +132,8 @@ class VoiceRecorderViewModel: ObservableObject {
                     self.transcription = result.bestTranscription.formattedString
                 }
             }
-            if error != nil || result?.isFinal == true {
+            // Only stop on real error, not just partials
+            if error != nil {
                 Task { @MainActor in
                     if self.isRecording {
                         self.stopRecording()
@@ -153,8 +155,9 @@ class VoiceRecorderViewModel: ObservableObject {
                     let filename = self.currentAudioFilename ?? self.generateAudioFilename()
                     self.currentAudioFilename = filename
                     let url = self.getDocumentsDirectory().appendingPathComponent(filename)
-                    // Write as WAV (native format) - will compress to M4A after
-                    self.audioFile = try AVAudioFile(forWriting: url, settings: recordingFormat.settings)
+                    
+                    // 🔥 FIX: Use the BUFFER'S format settings (safest way to match hardware)
+                    self.audioFile = try AVAudioFile(forWriting: url, settings: buffer.format.settings)
                 }
                 try self.audioFile?.write(from: buffer)
             } catch {
@@ -250,7 +253,8 @@ class VoiceRecorderViewModel: ObservableObject {
         
         do {
             let detectedLang = try await detectLanguage(text)
-            let analysis = try await GeminiAnalysisService.shared.analyze(text)
+            // 🔥 LANGUAGE: Pass selected language for localized analysis
+            let analysis = try await GeminiAnalysisService.shared.analyze(text, languageCode: currentLanguageCode)
             
             // Robust date parsing - try multiple formats
             var extractedDate: Date? = nil
