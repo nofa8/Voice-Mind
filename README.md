@@ -62,7 +62,7 @@ This project addresses the friction of manual note-taking. By combining **Core A
 
 1.  **Clone the Repository**
     ```bash
-    git clone [https://github.com/your-repo/voice-mind.git](https://github.com/your-repo/voice-mind.git)
+    git clone https://github.com/nofa8/Voice-Mind.git
     cd voice-mind
     ```
 
