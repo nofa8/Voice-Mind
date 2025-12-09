@@ -11,11 +11,11 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var displayName: String {
         switch self {
-        case .englishUS: return "🇺🇸 English"
-        case .portuguese: return "🇵🇹 Portuguese"
-        case .spanish: return "🇪🇸 Spanish"
-        case .french: return "🇫🇷 French"
-        case .german: return "🇩🇪 German"
+        case .englishUS: return "🇺🇸 USA"
+        case .portuguese: return "🇵🇹 PT"
+        case .spanish: return "🇪🇸 ES"
+        case .french: return "🇫🇷 FR"
+        case .german: return "🇩🇪 DE"
         }
     }
 }
