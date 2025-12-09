@@ -649,11 +649,18 @@ struct VoiceNoteDetailView: View {
                             Button {
                                 addToReminders(item: item, index: index)
                             } label: {
-                                if addingReminderIndex == index {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
-                                } else {
-                                    Image(systemName: "checklist")
+                                VStack(spacing: 2) {
+                                    if addingReminderIndex == index {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                    } else {
+                                        Image(systemName: "checklist")
+                                            .font(.title3) // Slightly larger to match the label
+                                            .foregroundStyle(.blue)
+                                    }
+                                    
+                                    Text("Remind")
+                                        .font(.caption2)
                                         .foregroundStyle(.blue)
                                 }
                             }
