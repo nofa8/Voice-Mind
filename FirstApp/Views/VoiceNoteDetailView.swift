@@ -449,7 +449,9 @@ struct VoiceNoteDetailView: View {
         
         Task {
             do {
-                let analysis = try await GeminiAnalysisService.shared.analyze(note.transcript)
+                // 🔥 LANGUAGE: Use stored language for retry to maintain consistency
+                let language = note.detectedLanguage ?? "en-US"
+                let analysis = try await GeminiAnalysisService.shared.analyze(note.transcript, languageCode: language)
                 
                 // Parse date if present
                 var extractedDate: Date? = nil

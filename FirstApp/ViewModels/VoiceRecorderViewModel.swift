@@ -252,7 +252,9 @@ class VoiceRecorderViewModel: ObservableObject {
         }
         
         do {
-            let detectedLang = try await detectLanguage(text)
+            // 🔥 OPTIMIZATION: Use user-selected language instead of asking AI to detect it
+            let targetLanguageName = Locale(identifier: currentLanguageCode).localizedString(forLanguageCode: currentLanguageCode) ?? currentLanguageCode
+            
             // 🔥 LANGUAGE: Pass selected language for localized analysis
             let analysis = try await GeminiAnalysisService.shared.analyze(text, languageCode: currentLanguageCode)
             
@@ -315,7 +317,7 @@ class VoiceRecorderViewModel: ObservableObject {
                 priority: analysis.priority,
                 eventDate: extractedDate,
                 eventLocation: analysis.extractedLocation,
-                detectedLanguage: detectedLang,
+                detectedLanguage: targetLanguageName, // 🔥 Use selected language name
                 noteType: type,
                 audioFilename: currentAudioFilename,
                 analysisStatus: .completed
