@@ -24,6 +24,9 @@ struct MainView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     
+    // Control whether Cancel button appears (true when presented as sheet)
+    var showCancelButton: Bool = false
+    
     @StateObject private var recorder = VoiceRecorderViewModel()
     @State private var selectedLanguage: AppLanguage = .englishUS // Default
     
@@ -107,8 +110,10 @@ struct MainView: View {
             .navigationTitle("AI Note")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
+                if showCancelButton {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") { dismiss() }
+                    }
                 }
             }
             .task { await recorder.requestPermissions() }

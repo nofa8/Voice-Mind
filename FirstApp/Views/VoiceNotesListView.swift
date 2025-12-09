@@ -154,7 +154,7 @@ struct VoiceNotesListView: View {
                 VoiceNoteDetailView(note: note)
             }
             .sheet(isPresented: $isShowingRecorder) {
-                MainView().modelContext(context)
+                MainView(showCancelButton: true).modelContext(context)
             }
             .sheet(isPresented: $showFilterSheet) {
                 FilterSheetView(
