@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D81C76782EE9DCF200C60FFD /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D81C76772EE9DCF100C60FFD /* NetworkMonitor.swift */; };
 		D8400E632EE76A5800C67FA7 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8400E622EE76A5800C67FA7 /* StatsView.swift */; };
 		D85CD5732EC7B80D0008E8FC /* VoiceNotesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85CD5722EC7B80D0008E8FC /* VoiceNotesListView.swift */; };
 		D85CD5752EC7B8400008E8FC /* NoteRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85CD5742EC7B8400008E8FC /* NoteRow.swift */; };
@@ -49,6 +50,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D81C76772EE9DCF100C60FFD /* NetworkMonitor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
 		D8400E622EE76A5800C67FA7 /* StatsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		D85CD5722EC7B80D0008E8FC /* VoiceNotesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceNotesListView.swift; sourceTree = "<group>"; };
 		D85CD5742EC7B8400008E8FC /* NoteRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRow.swift; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 		D8F74F842E8AC7F0001D31C7 /* FirstApp */ = {
 			isa = PBXGroup;
 			children = (
+				D81C76772EE9DCF100C60FFD /* NetworkMonitor.swift */,
 				D87650252EE36AAB006E69D6 /* ToastModifier.swift */,
 				D87650232EE36A9D006E69D6 /* RemindersManager.swift */,
 				D87650192EE32C36006E69D6 /* CalendarManager.swift */,
@@ -339,6 +342,7 @@
 				D889E41E2EB8C8DD00A8E910 /* LLM_Service.swift in Sources */,
 				D889E4152EB6C0EB00A8E910 /* MainView.swift in Sources */,
 				D85CD5752EC7B8400008E8FC /* NoteRow.swift in Sources */,
+				D81C76782EE9DCF200C60FFD /* NetworkMonitor.swift in Sources */,
 				D87650242EE36A9D006E69D6 /* RemindersManager.swift in Sources */,
 				D889E4222EB9065B00A8E910 /* GeminiAnalysisService.swift in Sources */,
 				D889E4132EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift in Sources */,
