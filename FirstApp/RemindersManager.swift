@@ -101,6 +101,69 @@ class RemindersManager: ObservableObject {
             return .failure(.saveFailed(error.localizedDescription))
         }
     }
+    
+    // MARK: - Delete Reminder
+    
+    func deleteReminder(identifier: String) async -> Result<Void, ReminderError> {
+        // Check authorization
+        if !isAuthorized {
+            let granted = await requestAccess()
+            if !granted {
+                return .failure(.accessDenied)
+            }
+        }
+        
+        // Find the reminder by identifier
+        guard let reminder = eventStore.calendarItem(withIdentifier: identifier) as? EKReminder else {
+            // Reminder not found - maybe already deleted or identifier invalid
+            // Return success since the goal (reminder not existing) is achieved
+            return .success(())
+        }
+        
+        do {
+            try eventStore.remove(reminder, commit: true)
+            return .success(())
+        } catch {
+            return .failure(.deleteFailed(error.localizedDescription))
+        }
+    }
+    
+    // MARK: - Delete Multiple Reminders
+    
+    func deleteReminders(identifiers: [String]) async -> Result<Void, ReminderError> {
+        // Check authorization
+        if !isAuthorized {
+            let granted = await requestAccess()
+            if !granted {
+                return .failure(.accessDenied)
+            }
+        }
+        
+        var hasError = false
+        var lastError: String?
+        
+        for identifier in identifiers {
+            if let reminder = eventStore.calendarItem(withIdentifier: identifier) as? EKReminder {
+                do {
+                    try eventStore.remove(reminder, commit: false) // Don't commit yet
+                } catch {
+                    hasError = true
+                    lastError = error.localizedDescription
+                }
+            }
+        }
+        
+        // Commit all changes at once
+        do {
+            try eventStore.commit()
+            if hasError, let error = lastError {
+                return .failure(.deleteFailed(error))
+            }
+            return .success(())
+        } catch {
+            return .failure(.deleteFailed(error.localizedDescription))
+        }
+    }
 }
 
 // MARK: - Reminder Errors
@@ -108,6 +171,7 @@ class RemindersManager: ObservableObject {
 enum ReminderError: Error, LocalizedError {
     case accessDenied
     case saveFailed(String)
+    case deleteFailed(String)
     case noDefaultList
     
     var errorDescription: String? {
@@ -116,6 +180,8 @@ enum ReminderError: Error, LocalizedError {
             return "Reminders access denied. Enable in Settings."
         case .saveFailed(let reason):
             return "Failed to save: \(reason)"
+        case .deleteFailed(let reason):
+            return "Failed to delete: \(reason)"
         case .noDefaultList:
             return "No default reminders list available."
         }

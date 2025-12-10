@@ -38,6 +38,10 @@ final class VoiceNote {
     
     // 🔥 Analysis Status (for retry)
     var analysisStatus: AnalysisStatus
+    
+    // 🔥 External App Integration Identifiers
+    var calendarEventIdentifier: String?
+    var reminderIdentifiers: [String]?
 
     // Metadata
     var detectedLanguage: String? 
@@ -63,9 +67,11 @@ final class VoiceNote {
         detectedLanguage: String? = nil,
         createdAt: Date = Date(),
         noteType: NoteType = .note,
-        audioFilename: String? = nil,  // 🔥 Changed from audioFilePath
+        audioFilename: String? = nil,
         isPinned: Bool = false,
-        analysisStatus: AnalysisStatus = .completed
+        analysisStatus: AnalysisStatus = .completed,
+        calendarEventIdentifier: String? = nil,
+        reminderIdentifiers: [String]? = nil
     ) {
         self.id = UUID()
         self.createdAt = createdAt
@@ -86,7 +92,11 @@ final class VoiceNote {
         self.isPinned = isPinned
         self.analysisStatus = analysisStatus
         self.detectedLanguage = detectedLanguage
-        self.audioFilename = audioFilename  // 🔥 Changed from audioFilePath
+        self.audioFilename = audioFilename
+        
+        // 🔥 External app sync identifiers
+        self.calendarEventIdentifier = calendarEventIdentifier
+        self.reminderIdentifiers = reminderIdentifiers
     }
 }
 

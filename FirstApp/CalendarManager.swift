@@ -101,6 +101,32 @@ class CalendarManager: ObservableObject {
             return .failure(.saveFailed(error.localizedDescription))
         }
     }
+    
+    // MARK: - Delete Event
+    
+    func deleteEvent(identifier: String) async -> Result<Void, CalendarError> {
+        // Check authorization
+        if !isAuthorized {
+            let granted = await requestAccess()
+            if !granted {
+                return .failure(.accessDenied)
+            }
+        }
+        
+        // Find the event by identifier
+        guard let event = eventStore.event(withIdentifier: identifier) else {
+            // Event not found - maybe already deleted or identifier invalid
+            // Return success since the goal (event not existing) is achieved
+            return .success(())
+        }
+        
+        do {
+            try eventStore.remove(event, span: .thisEvent)
+            return .success(())
+        } catch {
+            return .failure(.deleteFailed(error.localizedDescription))
+        }
+    }
 }
 
 // MARK: - Calendar Errors
@@ -108,6 +134,7 @@ class CalendarManager: ObservableObject {
 enum CalendarError: Error, LocalizedError {
     case accessDenied
     case saveFailed(String)
+    case deleteFailed(String)
     case noDefaultCalendar
     
     var errorDescription: String? {
@@ -116,6 +143,8 @@ enum CalendarError: Error, LocalizedError {
             return "Calendar access was denied. Please enable in Settings."
         case .saveFailed(let reason):
             return "Failed to save event: \(reason)"
+        case .deleteFailed(let reason):
+            return "Failed to delete event: \(reason)"
         case .noDefaultCalendar:
             return "No default calendar available."
         }
