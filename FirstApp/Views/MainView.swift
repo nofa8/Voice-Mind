@@ -79,11 +79,6 @@ struct MainView: View {
                                 .fontWeight(.semibold)
                                 .foregroundStyle(Theme.textPrimary)
                             
-                            if recorder.isRecording {
-                                Text("Recording in progress")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.textSecondary)
-                            }
                         }
                     }
                     .padding(.top, 40)
