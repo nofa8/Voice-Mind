@@ -1,7 +1,5 @@
-// FirstApp/Views/MainView.swift
 import SwiftUI
 
-// Define supported languages
 enum AppLanguage: String, CaseIterable, Identifiable {
     case englishUS = "en-US"
     case portuguese = "pt-PT"
@@ -21,84 +19,123 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     }
 }
 
-
 struct MainView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var networkMonitor: NetworkMonitor // 🔥 New dependency
+    @Environment(\.colorScheme) private var colorScheme
     
     var showCancelButton: Bool = false
+    
     @StateObject private var recorder = VoiceRecorderViewModel()
     @State private var selectedLanguage: AppLanguage = .englishUS
     
     var body: some View {
         NavigationStack {
             ZStack {
-                Theme.background.ignoresSafeArea()
+                // Adaptive gradient background
+                LinearGradient(
+                    colors: colorScheme == .dark 
+                        ? [Theme.background, Theme.background]
+                        : [Theme.background, Theme.primary.opacity(0.05)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
                 
                 VStack(spacing: 30) {
                     
-                    // 1. Dynamic Header
-                    VStack(spacing: 15) {
+                    // 1. Header with enhanced visual feedback
+                    VStack(spacing: 16) {
                         ZStack {
-                            Circle()
-                                .fill(recorder.isRecording ? Theme.recordingGradient : Theme.primaryGradient)
-                                .frame(width: 100, height: 100)
-                                .opacity(0.2)
-                                .symbolEffect(.pulse, isActive: recorder.isRecording) // iOS 17 Animation
+                            // Pulse ring effect when recording
+                            if recorder.isRecording {
+                                Circle()
+                                    .stroke(Color.red.opacity(0.3), lineWidth: 3)
+                                    .scaleEffect(recorder.isRecording ? 1.3 : 1.0)
+                                    .opacity(recorder.isRecording ? 0 : 1)
+                                    .animation(
+                                        .easeOut(duration: 1.5).repeatForever(autoreverses: false),
+                                        value: recorder.isRecording
+                                    )
+                                    .frame(width: 100, height: 100)
+                            }
                             
-                            Image(systemName: recorder.isRecording ? "waveform" : "mic.fill")
-                                .font(.system(size: 40))
-                                .foregroundStyle(recorder.isRecording ? .red : Theme.primary)
-                                .contentTransition(.symbolEffect(.replace))
+                            Image(systemName: recorder.isRecording ? "waveform.circle.fill" : "mic.circle.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 80, height: 80)
+                                .foregroundStyle(
+                                    recorder.isRecording 
+                                        ? Color.red 
+                                        : Theme.primary
+                                )
+                                .symbolEffect(.pulse, isActive: recorder.isRecording)
+                                .symbolRenderingMode(.hierarchical)
                         }
                         
-                        Text(recorder.isRecording ? "Listening..." : "Tap to Record")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(Theme.textPrimary)
-                    }
-                    .padding(.top, 40)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(recorder.isRecording ? "Recording in progress" : "Ready to record")
-                    
-                    // 2. Transcript Card
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 10) {
-                            if recorder.transcription.isEmpty {
-                                HStack {
-                                    Image(systemName: "sparkles")
-                                        .foregroundStyle(.yellow)
-                                    Text("Try saying:")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .foregroundStyle(Theme.textSecondary)
-                                }
-                                Text("\"Lunch with John tomorrow at 2 PM\"")
-                                    .font(.body)
-                                    .italic()
-                                    .foregroundStyle(Theme.textTertiary)
-                            } else {
-                                Text(recorder.transcription)
-                                    .font(.body)
-                                    .foregroundStyle(Theme.textPrimary)
-                                    .animation(.default, value: recorder.transcription)
+                        VStack(spacing: 4) {
+                            Text(recorder.isRecording ? "Listening..." : "Tap to Record")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Theme.textPrimary)
+                            
+                            if recorder.isRecording {
+                                Text("Recording in progress")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.textSecondary)
                             }
                         }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(height: 200)
-                    .adaptiveCardStyle()
+                    .padding(.top, 40)
+                    
+                    // 2. Transcript area with enhanced styling
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "text.bubble")
+                                .foregroundStyle(Theme.primary)
+                            Text("Transcription")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                        .padding(.horizontal, Theme.padding)
+                        
+                        ScrollView {
+                            Text(recorder.transcription.isEmpty 
+                                ? "Say something like 'Lunch with John tomorrow at 2pm'..." 
+                                : recorder.transcription)
+                                .font(.body)
+                                .foregroundStyle(recorder.transcription.isEmpty ? Theme.textTertiary : Theme.textPrimary)
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(height: 180)
+                        .background(
+                            RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                .fill(Theme.cardBackground)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                        .stroke(
+                                            recorder.isRecording ? Theme.primary.opacity(0.3) : Color.clear,
+                                            lineWidth: 2
+                                        )
+                                )
+                        )
+                        .adaptiveBorder()
+                        .cardShadow()
+                    }
                     .padding(.horizontal)
                     
-                    // 3. Language Selector
-                    VStack(spacing: 8) {
-                        Text("Speaking Language")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundStyle(Theme.textSecondary)
-                            .textCase(.uppercase)
+                    // 3. Language Selector with enhanced design
+                    VStack(spacing: 12) {
+                        HStack {
+                            Image(systemName: "globe")
+                                .foregroundStyle(Theme.primary)
+                            Text("Speaking Language")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Theme.textSecondary)
+                        }
                         
                         Picker("Language", selection: $selectedLanguage) {
                             ForEach(AppLanguage.allCases) { lang in
@@ -106,25 +143,20 @@ struct MainView: View {
                             }
                         }
                         .pickerStyle(.segmented)
+                        .disabled(recorder.isRecording)
                     }
                     .padding()
-                    .adaptiveCardStyle()
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                            .fill(Theme.cardBackground)
+                    )
+                    .adaptiveBorder()
+                    .cardShadow()
                     .padding(.horizontal)
 
                     Spacer()
                     
-                    // 4. Offline Warning
-                    if !networkMonitor.isConnected {
-                        HStack {
-                            Image(systemName: "wifi.slash")
-                            Text("Offline Mode: Analysis unavailable")
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .padding(.bottom, 8)
-                    }
-                    
-                    // 5. Action Button
+                    // 4. Enhanced Action Button
                     Button {
                         if recorder.isRecording {
                             recorder.stopRecording()
@@ -132,28 +164,39 @@ struct MainView: View {
                             recorder.startRecording(language: selectedLanguage.rawValue)
                         }
                     } label: {
-                        HStack {
-                            Image(systemName: recorder.isRecording ? "stop.fill" : "mic.fill")
-                            Text(recorder.isRecording ? "Stop & Process" : "Start Recording")
+                        HStack(spacing: 12) {
+                            Image(systemName: recorder.isRecording ? "stop.circle.fill" : "mic.circle.fill")
+                                .font(.title3)
+                            
+                            Text(recorder.isRecording ? "Stop & AI Process" : "Start Recording")
+                                .font(.headline)
                         }
-                        .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .padding(.vertical, 16)
                         .background(
-                            recorder.isRecording ? Theme.recordingGradient : Theme.primaryGradient
+                            RoundedRectangle(cornerRadius: Theme.cornerRadius)
+                                .fill(
+                                    LinearGradient(
+                                        colors: recorder.isRecording 
+                                            ? [Color.red, Color.red.opacity(0.8)]
+                                            : [Theme.primary, Theme.primary.opacity(0.8)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
                         )
-                        .cornerRadius(Theme.cornerRadius)
-                        .shadow(color: recorder.isRecording ? .red.opacity(0.3) : .blue.opacity(0.3), radius: 10, y: 5)
+                        .shadow(
+                            color: (recorder.isRecording ? Color.red : Theme.primary).opacity(0.3),
+                            radius: 8,
+                            y: 4
+                        )
                     }
-                    .disabled(!networkMonitor.isConnected && !recorder.isRecording)
                     .padding(.horizontal)
                     .padding(.bottom, 20)
-                    .accessibilityLabel(recorder.isRecording ? "Stop Recording" : "Start Recording")
-                    .accessibilityHint(recorder.isRecording ? "Ends recording and starts AI analysis" : "Starts listening")
                 }
             }
-            .navigationTitle("Voice Mind")
+            .navigationTitle("AI Note")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if showCancelButton {
