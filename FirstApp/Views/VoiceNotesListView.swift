@@ -209,13 +209,7 @@ struct VoiceNotesListView: View {
         
         // Delete
         Button(role: .destructive) {
-            // 🔥 FIX: Use audioURL (dynamic) instead of stored path
-            if let url = note.audioURL {
-                try? FileManager.default.removeItem(at: url)
-            }
-            context.delete(note)
-            try? context.save()
-            showToastMessage("Note deleted", type: .success)
+            deleteNoteWithSync(note)
         } label: {
             Label("Delete", systemImage: "trash")
         }
@@ -237,11 +231,41 @@ struct VoiceNotesListView: View {
             
             await MainActor.run {
                 switch result {
-                case .success:
+                case .success(let identifier):
+                    // ✅ Store the calendar event identifier
+                    note.calendarEventIdentifier = identifier
+                    try? context.save()
                     showToastMessage("Added to Calendar", type: .success)
                 case .failure(let error):
                     showToastMessage(error.localizedDescription, type: .error)
                 }
+            }
+        }
+    }
+
+    private func deleteNoteWithSync(_ note: VoiceNote) {
+        Task {
+            // Delete from Calendar if exists
+            if let calendarId = note.calendarEventIdentifier {
+                _ = await CalendarManager.shared.deleteEvent(identifier: calendarId)
+            }
+            
+            // Delete from Reminders if exist
+            if let reminderIds = note.reminderIdentifiers, !reminderIds.isEmpty {
+                _ = await RemindersManager.shared.deleteReminders(identifiers: reminderIds)
+            }
+            
+            await MainActor.run {
+                // Delete audio file
+                if let url = note.audioURL {
+                    try? FileManager.default.removeItem(at: url)
+                }
+                
+                // Delete note from database
+                context.delete(note)
+                try? context.save()
+                
+                showToastMessage("Note deleted", type: .success)
             }
         }
     }
