@@ -48,6 +48,12 @@ final class GeminiAnalysisService {
         // Convert "es-ES" -> "Spanish" for better AI understanding
         let targetLanguage = Locale(identifier: languageCode).localizedString(forLanguageCode: languageCode) ?? languageCode
         
+        // 🔥 PROMPT ENGINEERING STRATEGY:
+        // 1. Context Injection: We inject the current date/time to allow the LLM to resolve relative terms
+        //    (e.g., "next Friday" becomes a concrete ISO8601 date).
+        // 2. Multilingual Enforcing: We explicitly instruct the model to output in the *target* language
+        //    regardless of the input language, ensuring consistency (e.g., Spanish input -> Spanish output).
+        
         let systemInstruction = """
         You are an intelligent personal assistant analyzing voice notes.
         

@@ -878,14 +878,18 @@ struct VoiceNoteDetailView: View {
 }
 
 // MARK: - FlowLayout Helper
+// A custom layout that arranges items in a wrapping horizontal flow (like tags).
+// Uses the proposed width to calculate row breaks.
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8
     
+    // Calculate the total size required for the subviews
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let result = FlowResult(in: proposal.replacingUnspecifiedDimensions().width, subviews: subviews, spacing: spacing)
         return result.size
     }
     
+    // Position the subviews within the bounds based on the formatting result
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let result = FlowResult(in: bounds.width, subviews: subviews, spacing: spacing)
         for (index, subview) in subviews.enumerated() {
