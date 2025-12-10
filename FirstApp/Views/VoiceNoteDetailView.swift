@@ -691,7 +691,12 @@ struct VoiceNoteDetailView: View {
                 addingReminderIndex = nil
                 
                 switch result {
-                case .success:
+                case .success(let identifier):
+                    // ✅ Store the reminder identifier
+                    var identifiers = note.reminderIdentifiers ?? []
+                    identifiers.append(identifier)
+                    note.reminderIdentifiers = identifiers
+                    try? context.save()
                     showToastMessage("Added to Reminders", type: .success)
                 case .failure(let error):
                     showToastMessage(error.localizedDescription, type: .error)
@@ -784,10 +789,46 @@ struct VoiceNoteDetailView: View {
                 isAddingToCalendar = false
                 
                 switch result {
-                case .success:
+                case .success(let identifier):
+                    // ✅ Store the calendar event identifier
+                    note.calendarEventIdentifier = identifier
+                    try? context.save()
                     showToastMessage("Added to Calendar", type: .success)
                 case .failure(let error):
                     showToastMessage(error.localizedDescription, type: .error)
+                }
+            }
+        }
+    }
+
+
+    private func deleteNoteWithSync() {
+        Task {
+            // Delete from Calendar if exists
+            if let calendarId = note.calendarEventIdentifier {
+                _ = await CalendarManager.shared.deleteEvent(identifier: calendarId)
+            }
+            
+            // Delete from Reminders if exist
+            if let reminderIds = note.reminderIdentifiers, !reminderIds.isEmpty {
+                _ = await RemindersManager.shared.deleteReminders(identifiers: reminderIds)
+            }
+            
+            await MainActor.run {
+                // Delete audio file
+                if let url = note.audioURL {
+                    try? FileManager.default.removeItem(at: url)
+                }
+                
+                // Delete note from database
+                context.delete(note)
+                try? context.save()
+                
+                showToastMessage("Note deleted", type: .success)
+                
+                // Dismiss after showing toast
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    dismiss()
                 }
             }
         }
@@ -858,18 +899,7 @@ struct VoiceNoteDetailView: View {
     
     private var deleteButton: some View {
         Button(role: .destructive) {
-            // 🔥 FIX: Use audioURL (transient) instead of audioFilePath
-
-            if let url = note.audioURL {
-                try? FileManager.default.removeItem(at: url)
-            }
-            context.delete(note)
-            try? context.save()
-            showToastMessage("Note deleted", type: .success)
-            // Wait to show the toast and then dismiss
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                dismiss()
-            }
+            deleteNoteWithSync()
         } label: {
             Text("Delete this note")
                 .frame(maxWidth: .infinity)
