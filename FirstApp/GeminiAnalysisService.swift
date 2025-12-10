@@ -39,7 +39,7 @@ final class GeminiAnalysisService {
     }()
     
     // 🔥 LANGUAGE: Accept languageCode to localize output
-    func analyze(_ text: String, languageCode: String) async throws -> LLMAnalysis {
+    func analyzeWithoutRetry(_ text: String, languageCode: String) async throws -> LLMAnalysis {
         // 🔥 Use static formatters (much faster)
         let now = Date()
         let fullDateTime = Self.humanDateFormatter.string(from: now)
@@ -111,5 +111,28 @@ final class GeminiAnalysisService {
             print("Failed to decode. Raw: \(rawResponse)")
             throw GeminiError.decoding(error)
         }
+    }
+
+
+
+
+    // 🔥 Retry Logic: Exponential Backoff
+    func analyze(_ text: String, languageCode: String, maxRetries: Int = 3) async throws -> LLMAnalysis {
+        var currentAttempt = 0
+        
+        while currentAttempt < maxRetries {
+            do {
+                return try await analyzeWithoutRetry(text, languageCode: languageCode)
+            } catch {
+                currentAttempt += 1
+                if currentAttempt == maxRetries { throw error }
+                
+                // Wait: 1s, 2s, 4s
+                let delay = UInt64(pow(2.0, Double(currentAttempt - 1)) * 1_000_000_000)
+                print("⚠️ Analysis failed. Retrying in \(delay / 1_000_000_000)s...")
+                try await Task.sleep(nanoseconds: delay)
+            }
+        }
+        throw GeminiError.api("Max retries exceeded")
     }
 }
