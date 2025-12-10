@@ -143,20 +143,25 @@ class VoiceRecorderViewModel: ObservableObject {
         }
         
         // 🔥 HYBRID: Unified tap - writes to BOTH speech recognizer AND audio file
+        // RATIONALE: Installing a single tap avoids "double recording" conflicts where
+        // multiple nodes try to pull from the hardware input. This ensures:
+        // 1. Synchronization: The AI hears exactly what is saved to disk.
+        // 2. Stability: No fighting for hardware resources.
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: recordingFormat) { [weak self] buffer, _ in
             guard let self = self else { return }
             
-            // 1. Send to Speech Recognizer
+            // 1. Send to Speech Recognizer (Real-time transcription)
             self.recognitionRequest?.append(buffer)
             
-            // 2. Write to Audio File (same data = no conflicts!)
+            // 2. Write to Audio File (Permanent storage)
+            // Note: We use the *buffer's* format settings to match the hardware exactly.
             do {
                 if self.audioFile == nil {
                     let filename = self.currentAudioFilename ?? self.generateAudioFilename()
                     self.currentAudioFilename = filename
                     let url = self.getDocumentsDirectory().appendingPathComponent(filename)
                     
-                    // 🔥 FIX: Use the BUFFER'S format settings (safest way to match hardware)
+                    // Initialize file using incoming buffer format to prevent sample rate mismatch
                     self.audioFile = try AVAudioFile(forWriting: url, settings: buffer.format.settings)
                 }
                 try self.audioFile?.write(from: buffer)

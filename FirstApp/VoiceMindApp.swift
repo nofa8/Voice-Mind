@@ -10,6 +10,7 @@ import SwiftData
 
 @main
 struct VoiceMindApp: App {
+    @StateObject private var networkMonitor = NetworkMonitor.shared
     var body: some Scene {
         WindowGroup {
             TabView {
@@ -42,6 +43,7 @@ struct VoiceMindApp: App {
                 }
             }
         }
+        .environmentObject(networkMonitor)
         .modelContainer(for: VoiceNote.self)
     }
 }
