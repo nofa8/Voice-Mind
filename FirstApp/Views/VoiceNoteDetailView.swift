@@ -146,7 +146,7 @@ struct VoiceNoteDetailView: View {
                 } else {
                     section("Transcript", text: note.transcript)
                     section("Summary", text: note.summary)
-                    section("Sentiment", text: note.sentiment)
+                    metadataSection
                 }
                 
                 if let keywords = note.keywords, !keywords.isEmpty {
@@ -167,6 +167,14 @@ struct VoiceNoteDetailView: View {
         .navigationTitle(isEditing ? "Edit Note" : "Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if !isEditing {
+                     ShareLink(item: generateShareText()) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+            }
+            
             ToolbarItem(placement: .navigationBarTrailing) {
                 if isEditing {
                     Button("Save") {
@@ -198,6 +206,74 @@ struct VoiceNoteDetailView: View {
             audioPlayer.cleanup()
         }
         .toast(isPresented: $showToast, message: toastMessage, type: toastType)
+    }
+
+    // MARK: - Share Helper
+    private func generateShareText() -> String {
+        """
+        🎙️ Voice Mind Note
+        Date: \(note.createdAt.formatted())
+        
+        📝 Summary:
+        \(note.summary ?? "No summary")
+        
+        💬 Transcript:
+        \(note.transcript)
+        """
+    }
+
+    // MARK: - Metadata Badge Section
+    @ViewBuilder
+    private var metadataSection: some View {
+        HStack(spacing: 16) {
+            // Sentiment Badge
+            if let sentiment = note.sentiment {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Sentiment").font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Image(systemName: sentimentIcon(sentiment))
+                        Text(sentiment)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(sentimentColor(sentiment).opacity(0.1))
+                    .foregroundStyle(sentimentColor(sentiment))
+                    .clipShape(Capsule())
+                }
+            }
+            
+            // Category Badge
+            if let category = note.category {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Category").font(.caption).foregroundStyle(.secondary)
+                    Text(category)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.1))
+                        .foregroundStyle(.blue)
+                        .clipShape(Capsule())
+                }
+            }
+            
+            Spacer()
+        }
+    }
+
+    // Helpers for colors/icons
+    private func sentimentColor(_ sentiment: String) -> Color {
+        switch sentiment.lowercased() {
+        case "positive": return .green
+        case "negative": return .red
+        default: return .gray
+        }
+    }
+
+    private func sentimentIcon(_ sentiment: String) -> String {
+        switch sentiment.lowercased() {
+        case "positive": return "face.smiling.fill"
+        case "negative": return "exclamationmark.triangle.fill"
+        default: return "minus.circle.fill"
+        }
     }
     
     // MARK: - Edit Mode Functions

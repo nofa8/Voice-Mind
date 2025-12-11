@@ -24,6 +24,7 @@
 		D889E41B2EB8C8DD00A8E910 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = D889E41A2EB8C8DD00A8E910 /* Secrets.xcconfig */; };
 		D889E41E2EB8C8DD00A8E910 /* LLM_Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */; };
 		D889E4222EB9065B00A8E910 /* GeminiAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D889E4212EB9065B00A8E910 /* GeminiAnalysisService.swift */; };
+		D8CB0C982EEB4860001A8726 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CB0C972EEB4860001A8726 /* WelcomeView.swift */; };
 		D8F74F862E8AC7F0001D31C7 /* VoiceMindApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F74F852E8AC7F0001D31C7 /* VoiceMindApp.swift */; };
 		D8F74F8A2E8AC7F1001D31C7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D8F74F892E8AC7F1001D31C7 /* Assets.xcassets */; };
 		D8F74F8D2E8AC7F1001D31C7 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D8F74F8C2E8AC7F1001D31C7 /* Preview Assets.xcassets */; };
@@ -68,6 +69,7 @@
 		D889E41C2EB8C8DD00A8E910 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D889E41D2EB8C8DD00A8E910 /* LLM_Service.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLM_Service.swift; sourceTree = "<group>"; };
 		D889E4212EB9065B00A8E910 /* GeminiAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiAnalysisService.swift; sourceTree = "<group>"; };
+		D8CB0C972EEB4860001A8726 /* WelcomeView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		D8F74F822E8AC7F0001D31C7 /* FirstApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FirstApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D8F74F852E8AC7F0001D31C7 /* VoiceMindApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMindApp.swift; sourceTree = "<group>"; };
 		D8F74F892E8AC7F1001D31C7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -123,6 +125,7 @@
 		D889E40F2EB6BFA000A8E910 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				D8CB0C972EEB4860001A8726 /* WelcomeView.swift */,
 				D8400E622EE76A5800C67FA7 /* StatsView.swift */,
 				D876501D2EE351DE006E69D6 /* FilterSheetView.swift */,
 				D87650112ECF3CB9006E69D6 /* AgendaView.swift */,
@@ -347,6 +350,7 @@
 				D889E4222EB9065B00A8E910 /* GeminiAnalysisService.swift in Sources */,
 				D889E4132EB6C0DA00A8E910 /* VoiceRecorderViewModel.swift in Sources */,
 				D87650142ECF3CD6006E69D6 /* Theme.swift in Sources */,
+				D8CB0C982EEB4860001A8726 /* WelcomeView.swift in Sources */,
 				D876501A2EE32C36006E69D6 /* CalendarManager.swift in Sources */,
 				D87650122ECF3CB9006E69D6 /* AgendaView.swift in Sources */,
 				D87650262EE36AAC006E69D6 /* ToastModifier.swift in Sources */,

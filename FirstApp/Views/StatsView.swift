@@ -102,7 +102,7 @@ struct StatsView: View {
                 .frame(height: 200)
                 .chartForegroundStyleScale([
                     "Positive": Color.green,
-                    "Neutral": Color.gray,
+                    "Neutral": Color.blue,
                     "Negative": Color.red,
                     "Unknown": Color.secondary
                 ])

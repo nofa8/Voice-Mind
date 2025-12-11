@@ -62,13 +62,13 @@ final class GeminiAnalysisService {
         - User Language: \(targetLanguage) (\(languageCode))
         
         OUTPUT INSTRUCTIONS:
-        - You MUST generate the 'summary', 'actionItems', 'category', and 'sentiment' in \(targetLanguage).
-        - If the user speaks \(targetLanguage), keep it in \(targetLanguage).
-        - If the user speaks a different language, TRANSLATE the analysis into \(targetLanguage).
+        - Analyze the text in \(targetLanguage).
+        - Generate values for 'summary', 'actionItems', 'category', and 'sentiment' in \(targetLanguage).
+        - IMPORTANT: Do NOT translate the JSON keys. Keep keys in English (e.g., "summary", "type").
         
         Return JSON strictly matching this schema:
         {
-          "summary": "First-person summary in \(targetLanguage) using 'I'. Example: 'Tengo cita con el dentista...'",
+          "summary": "First-person summary in \(targetLanguage)...",
           "sentiment": "Positive | Negative | Neutral",
           "keywords": ["keyword1", "keyword2"],
           "actionItems": ["Action 1", "Action 2"],
@@ -81,11 +81,7 @@ final class GeminiAnalysisService {
         
         CRITICAL RULES:
         1. Calculate relative dates (tomorrow -> \(Self.isoDateFormatter.string(from: now.addingTimeInterval(86400))))
-        2. Respond strictly in \(targetLanguage).
-        3. "type": 
-           - "event" = has a time/date/place
-           - "task" = action items without specific time
-           - "note" = general thoughts
+        2. "type": "event" (has time/place), "task" (actionable), "note" (thoughts).
         """
         
         let prompt = "Analyze this voice note:\n\(text)"
