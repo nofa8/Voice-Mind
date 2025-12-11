@@ -162,11 +162,20 @@ struct MainView: View {
                         }
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: recorder.isRecording ? "stop.circle.fill" : "mic.circle.fill")
-                                .font(.title3)
-                            
-                            Text(recorder.isRecording ? "Stop & AI Process" : "Start Recording")
-                                .font(.headline)
+                            // 🔥 NEW: Check for processing state
+                            if recorder.isProcessing {
+                                ProgressView()
+                                    .tint(.white)
+                                Text("Processing...")
+                                    .font(.headline)
+                            } else {
+                                // Standard State
+                                Image(systemName: recorder.isRecording ? "stop.circle.fill" : "mic.circle.fill")
+                                    .font(.title3)
+                                
+                                Text(recorder.isRecording ? "Stop & AI Process" : "Start Recording")
+                                    .font(.headline)
+                            }
                         }
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -175,9 +184,12 @@ struct MainView: View {
                             RoundedRectangle(cornerRadius: Theme.cornerRadius)
                                 .fill(
                                     LinearGradient(
-                                        colors: recorder.isRecording 
-                                            ? [Color.red, Color.red.opacity(0.8)]
-                                            : [Theme.primary, Theme.primary.opacity(0.8)],
+                                        // 🔥 NEW: Use gray if processing
+                                        colors: recorder.isProcessing
+                                            ? [.gray, .gray.opacity(0.8)]
+                                            : (recorder.isRecording 
+                                                ? [Color.red, Color.red.opacity(0.8)]
+                                                : [Theme.primary, Theme.primary.opacity(0.8)]),
                                         startPoint: .leading,
                                         endPoint: .trailing
                                     )
@@ -191,14 +203,19 @@ struct MainView: View {
                     }
                     .padding(.horizontal)
                     .padding(.bottom, 20)
+                    .disabled(recorder.isProcessing) // 🔥 Lock button
                 }
             }
             .navigationTitle("AI Note")
+            // 🔥 NEW: Prevent swipe-to-dismiss while recording OR processing
+            .interactiveDismissDisabled(recorder.isRecording || recorder.isProcessing)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if showCancelButton {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Cancel") { dismiss() }
+                            // 🔥 NEW: Prevent cancelling mid-save
+                            .disabled(recorder.isRecording || recorder.isProcessing)
                     }
                 }
             }

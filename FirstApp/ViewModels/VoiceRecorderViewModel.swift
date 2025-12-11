@@ -9,6 +9,7 @@ import UIKit
 @MainActor
 class VoiceRecorderViewModel: ObservableObject {
     @Published var isRecording = false
+    @Published var isProcessing = false 
     @Published var transcription = ""
     
     // Analysis State
@@ -172,13 +173,20 @@ class VoiceRecorderViewModel: ObservableObject {
         isAudioTapInstalled = true
         
         audioEngine.prepare()
-        try? audioEngine.start()
-        
+        do {
+            try audioEngine.start()
+        } catch {
+            print("❌ Audio Engine failed to start: \(error.localizedDescription)")
+            self.summary = "Hardware error: Could not start microphone"
+            self.isRecording = false
+            return
+        }
         triggerHaptic(style: .heavy)
     }
     
     func stopRecording() {
         isRecording = false
+        isProcessing = true // 🔒 Lock UI
         
         // 🔥 HYBRID: Close the audio file
         audioFile = nil
@@ -197,15 +205,32 @@ class VoiceRecorderViewModel: ObservableObject {
         
         triggerNotificationHaptic(type: .success)
         
-        // 🔥 HYBRID: Compress WAV to M4A, then analyze
         Task {
-            if let wavFilename = currentAudioFilename {
-                // Compress to M4A (smaller file size)
-                if let m4aFilename = await compressAudio(wavFilename: wavFilename) {
+            // Check if filename exists
+            guard let filename = currentAudioFilename else {
+                await MainActor.run { isProcessing = false } // 🔓 Unlock if error
+                return
+            }
+            
+            let fileURL = getDocumentsDirectory().appendingPathComponent(filename)
+            
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                // File exists, proceed with compression
+                if let m4aFilename = await compressAudio(wavFilename: filename) {
                     currentAudioFilename = m4aFilename
                 }
+                await analyze() // This saves to context
+            } else {
+                print("⚠️ No audio file captured (Microphone permission missing?)")
+                await MainActor.run {
+                    self.summary = "Recording failed: No audio captured."
+                }
             }
-            await analyze()
+            
+            // 🔓 Unlock UI when EVERYTHING is done
+            await MainActor.run {
+                self.isProcessing = false
+            }
         }
     }
     
