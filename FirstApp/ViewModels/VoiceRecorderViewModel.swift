@@ -77,7 +77,7 @@ class VoiceRecorderViewModel: ObservableObject {
         // 🔥 LANGUAGE: Save for AI analysis output
         self.currentLanguageCode = language
         
-        transcription = ""
+        self.transcription = ""
         summary = ""
         keywords = []
         actionItems = []
@@ -130,7 +130,9 @@ class VoiceRecorderViewModel: ObservableObject {
             
             if let result = result {
                 Task { @MainActor in
-                    self.transcription = result.bestTranscription.formattedString
+                    if (result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines) != ""){
+                        self.transcription = result.bestTranscription.formattedString
+                    }
                 }
             }
             // Only stop on real error, not just partials
