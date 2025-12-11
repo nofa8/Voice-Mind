@@ -23,6 +23,8 @@ struct MainView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
+    @State private var showOnboarding = false
     
     var showCancelButton: Bool = false
     
@@ -201,7 +203,15 @@ struct MainView: View {
                 }
             }
             .task { await recorder.requestPermissions() }
-            .onAppear { recorder.setContext(context) }
+            .onAppear { 
+                recorder.setContext(context)
+                if !hasSeenOnboarding {
+                    showOnboarding = true
+                }
+            }
+            .sheet(isPresented: $showOnboarding) {
+                WelcomeView(isPresented: $showOnboarding)
+            }
         }
     }
 }
